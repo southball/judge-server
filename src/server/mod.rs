@@ -13,10 +13,8 @@ pub fn configure_server(cfg: &mut web::ServiceConfig) {
         .service(
             web::resource("/problem")
                 .app_data(web::JsonConfig::default().error_handler(|err, _| {
-                    error::InternalError::from_response(
-                        err,
-                        HttpResponse::BadRequest().body("400 Bad Request"),
-                    ).into()
+                    log::debug!("Error: {:?}", err);
+                    HttpResponse::BadRequest().body("400 Bad Request").into()
                 }))
                 .route(web::post().to(create_problem))
         );
