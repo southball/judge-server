@@ -5,6 +5,7 @@ mod cli;
 mod schema;
 mod models;
 mod server;
+mod json;
 
 use cli::Opts;
 use clap::derive::Clap;
@@ -35,7 +36,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .configure(configure_database(&database_address))
             .configure(server::configure_server)
-            .default_service(server::configure_default_service())
     })
         .bind(&opts.address)?
         .run()
