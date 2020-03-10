@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct Problem {
     pub id: i32,
+    pub slug: String,
     pub title: String,
     pub time_limit: f64,
     pub memory_limit: i64,
@@ -12,6 +13,7 @@ pub struct Problem {
 #[derive(Insertable, Serialize, Deserialize)]
 #[table_name="problems"]
 pub struct NewProblem {
+    pub slug: String,
     pub title: String,
     pub time_limit: f64,
     pub memory_limit: i64,
@@ -42,6 +44,8 @@ pub struct Submission {
     pub id: i32,
     pub user_id: i32,
     pub problem_id: i32,
+    pub contest_id: Option<i32>,
+    pub contest_problem_id: Option<i32>,
     pub language: String,
     pub source_code: String
 }
