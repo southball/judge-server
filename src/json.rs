@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Serialize};
 
 #[derive(Serialize)]
 pub struct JsonResponse<'a, T: Serialize> {
@@ -11,10 +11,10 @@ pub struct JsonResponse<'a, T: Serialize> {
     pub message: Option<String>,
 }
 
-pub fn json_ok<T: Serialize>(data: &T) -> JsonResponse<T> {
+pub fn json_ok<T: Serialize>(data: Option<&T>) -> JsonResponse<T> {
     JsonResponse {
         success: true,
-        data: Some(data),
+        data,
         message: None
     }
 }

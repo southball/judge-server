@@ -1,4 +1,4 @@
-use crate::schema::problems;
+use crate::schema::*;
 use serde::{Serialize, Deserialize};
 
 #[derive(Queryable, Serialize, Deserialize)]
@@ -23,7 +23,18 @@ pub struct User {
     pub username: String,
     pub display_name: String,
     pub password_hash: String,
-    pub password_salt: String
+    pub password_salt: String,
+    pub permissions: Vec<String>,
+}
+
+#[derive(Insertable, Serialize, Deserialize)]
+#[table_name="users"]
+pub struct NewUser {
+    pub username: String,
+    pub display_name: String,
+    pub password_hash: String,
+    pub password_salt: String,
+    pub permissions: Vec<String>,
 }
 
 #[derive(Queryable, Serialize, Deserialize)]

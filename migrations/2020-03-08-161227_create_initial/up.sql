@@ -10,7 +10,8 @@ CREATE TABLE Users (
     username TEXT NOT NULL UNIQUE,
     display_name TEXT NOT NULL,
     password_hash TEXT NOT NULL,
-    password_salt TEXT NOT NULL
+    password_salt TEXT NOT NULL,
+    permissions TEXT[] NOT NULL
 );
 
 CREATE TABLE Submissions (
@@ -20,4 +21,3 @@ CREATE TABLE Submissions (
     language TEXT NOT NULL,
     source_code TEXT NOT NULL
 );
-

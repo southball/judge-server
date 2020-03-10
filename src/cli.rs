@@ -22,6 +22,10 @@ pub struct Opts {
     /// The address and port to bind to.
     #[clap(long = "address")]
     pub address: String,
+
+    /// The encryption key for JWT.
+    #[clap(long = "key")]
+    pub key: String,
 }
 
 pub fn calc_log_level(verbosity: i32, quiet: bool) -> LevelFilter {

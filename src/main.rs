@@ -16,6 +16,11 @@ use actix_web::{web, HttpServer, App};
 
 pub type DbPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
 
+pub struct AppState {
+    pub pool: DbPool,
+    pub opts: Opts,
+}
+
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     let opts: Opts = Opts::parse();
@@ -31,10 +36,10 @@ async fn main() -> std::io::Result<()> {
 
     log::debug!("Launching server...");
 
-    let database_address = opts.database.clone();
+    let opts_clone = opts.clone();
     HttpServer::new(move || {
         App::new()
-            .configure(configure_database(&database_address))
+            .configure(configure_opp_state(&opts_clone))
             .configure(server::configure_server)
     })
         .bind(&opts.address)?
@@ -42,14 +47,17 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
-fn configure_database(address: &str) -> impl Fn(&mut web::ServiceConfig) -> () + '_ {
+fn configure_opp_state(opts: &Opts) -> impl Fn(&mut web::ServiceConfig) -> () + '_ {
     move |cfg: &mut web::ServiceConfig| {
-        let manager = r2d2::ConnectionManager::<PgConnection>::new(address);
+        let manager = r2d2::ConnectionManager::<PgConnection>::new(&opts.database);
         let pool = r2d2::Pool::builder()
             .build(manager)
             .expect("Failed to create database connection pool.");
         log::debug!("Connected to database.");
 
-        cfg.data(pool.clone());
+        cfg.data(AppState {
+            pool: pool.clone(),
+            opts: opts.clone(),
+        });
     }
 }
