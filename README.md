@@ -22,16 +22,18 @@ This app is not responsible for any of the judging. It will provide an interface
     - [X] Login
     - [X] Register
 - Problems:
-    - [ ] View
-    - [ ] Create
+    - [X] View
+    - [X] Create
     - [ ] Edit
-    - [ ] Delete
+    - [X] Delete
 - Contests:
     - [ ] View
     - [ ] Create
     - [ ] Edit
     - [ ] Delete
     - [ ] Register
+    - [ ] Submit
+    - [ ] Scoreboard
 - Submissions:
     - [ ] View
-    - [ ] Submit
+    - [X] Submit

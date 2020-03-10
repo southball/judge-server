@@ -1,6 +1,6 @@
 CREATE TABLE Problems (
     id SERIAL PRIMARY KEY,
-    slug TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL,
     time_limit DOUBLE PRECISION NOT NULL,
     memory_limit BIGINT NOT NULL
@@ -25,7 +25,8 @@ CREATE TABLE ContestProblems (
     id SERIAL PRIMARY KEY,
     slug TEXT NOT NULL,
     contest_id INT REFERENCES Contests(id),
-    problem_id INT REFERENCES Problems(id)
+    problem_id INT REFERENCES Problems(id),
+    UNIQUE(contest_id, slug)
 );
 
 CREATE TABLE Submissions (

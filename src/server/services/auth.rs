@@ -8,7 +8,7 @@ use ring::rand::SecureRandom;
 use ring::{digest, pbkdf2, rand};
 use serde::{Serialize, Deserialize};
 use std::num::NonZeroU32;
-use super::default_handlers;
+use crate::server::default_handlers;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(web::scope("/auth")
@@ -213,4 +213,66 @@ fn decode_jwt(key: &str, jwt: &str) -> Result<Claims, Box<dyn std::error::Error>
     let result = decode::<Claims>(jwt, &DecodingKey::from_secret(key.as_bytes()), &Validation::default())?;
 
     Ok(result.claims)
+}
+
+pub struct Session {
+    pub user: crate::models::User,
+}
+
+#[derive(Debug, Clone)]
+struct AuthError {
+    error_message: String
+}
+
+impl std::fmt::Display for AuthError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Authentication error: {}.", self.error_message)
+    }
+}
+
+impl std::error::Error for AuthError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
+pub async fn get_session(state: &AppState, jwt: &str, require_permission: Option<&str>) -> Result<Session, HttpResponse> {
+    use crate::models::User;
+    use crate::schema::users;
+
+    let claims = decode_jwt(&state.opts.key, jwt);
+    if claims.is_err() {
+        return Err(default_handlers::forbidden().await);
+    }
+
+    let claims = claims.unwrap();
+    let connection = state.pool.get().expect("Failed to get connection.");
+
+    let username = claims.sub.clone();
+    let user: Vec<User> = web::block(move || {
+        users::table
+            .filter(users::username.eq(&username))
+            .load::<User>(&connection)
+    }).await.unwrap();
+
+    if user.len() == 0 {
+        return Err(HttpResponse::BadRequest().json(json_error("User not found.")));
+    }
+
+    let user = &user[0];
+
+    if let Some(permission) = require_permission {
+        if !user.permissions.iter().any(|p| p == permission) {
+            return Err(default_handlers::not_enough_permission().await);
+        }
+    }
+
+    Ok(Session {
+        user: user.clone()
+    })
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AccessTokenProps {
+    pub access_token: String,
 }

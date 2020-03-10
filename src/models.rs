@@ -1,7 +1,7 @@
 use crate::schema::*;
 use serde::{Serialize, Deserialize};
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Clone, Queryable, Serialize, Deserialize)]
 pub struct Problem {
     pub id: i32,
     pub slug: String,
@@ -10,7 +10,7 @@ pub struct Problem {
     pub memory_limit: i64,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Clone, Insertable, Serialize, Deserialize)]
 #[table_name="problems"]
 pub struct NewProblem {
     pub slug: String,
@@ -19,7 +19,7 @@ pub struct NewProblem {
     pub memory_limit: i64,
 }
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Clone, Queryable, Serialize, Deserialize)]
 pub struct User {
     pub id: i32,
     pub username: String,
@@ -29,7 +29,7 @@ pub struct User {
     pub permissions: Vec<String>,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Clone, Insertable, Serialize, Deserialize)]
 #[table_name="users"]
 pub struct NewUser {
     pub username: String,
@@ -39,7 +39,7 @@ pub struct NewUser {
     pub permissions: Vec<String>,
 }
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Clone, Queryable, Serialize, Deserialize)]
 pub struct Submission {
     pub id: i32,
     pub user_id: i32,
@@ -48,4 +48,24 @@ pub struct Submission {
     pub contest_problem_id: Option<i32>,
     pub language: String,
     pub source_code: String
+}
+
+#[derive(Clone, Insertable, Serialize, Deserialize)]
+#[table_name="submissions"]
+pub struct NewSubmission {
+    pub user_id: i32,
+    pub problem_id: i32,
+    pub language: String,
+    pub source_code: String,
+}
+
+#[derive(Clone, Insertable, Serialize, Deserialize)]
+#[table_name="submissions"]
+pub struct NewContestSubmission {
+    pub user_id: i32,
+    pub problem_id: i32,
+    pub contest_id: i32,
+    pub contest_problem_id: i32,
+    pub language: String,
+    pub source_code: String,
 }
