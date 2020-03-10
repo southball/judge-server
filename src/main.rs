@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
     let opts_clone = opts.clone();
     HttpServer::new(move || {
         App::new()
-            .configure(configure_opp_state(&opts_clone))
+            .configure(configure_app_state(&opts_clone))
             .configure(server::configure_server)
     })
         .bind(&opts.address)?
@@ -47,7 +47,7 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
-fn configure_opp_state(opts: &Opts) -> impl Fn(&mut web::ServiceConfig) -> () + '_ {
+fn configure_app_state(opts: &Opts) -> impl Fn(&mut web::ServiceConfig) -> () + '_ {
     move |cfg: &mut web::ServiceConfig| {
         let manager = r2d2::ConnectionManager::<PgConnection>::new(&opts.database);
         let pool = r2d2::Pool::builder()

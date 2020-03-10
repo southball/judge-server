@@ -9,7 +9,6 @@ use ring::{digest, pbkdf2, rand};
 use serde::{Serialize, Deserialize};
 use std::num::NonZeroU32;
 use super::default_handlers;
-use jsonwebtoken::DecodingKey;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(web::scope("/auth")
@@ -210,7 +209,7 @@ fn generate_jwt_access_token(key: &str, username: &str) -> String {
 }
 
 fn decode_jwt(key: &str, jwt: &str) -> Result<Claims, Box<dyn std::error::Error>> {
-    use jsonwebtoken::{decode, Validation};
+    use jsonwebtoken::{decode, Validation, DecodingKey};
     let result = decode::<Claims>(jwt, &DecodingKey::from_secret(key.as_bytes()), &Validation::default())?;
 
     Ok(result.claims)
