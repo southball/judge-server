@@ -33,10 +33,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
 }
 
 async fn get_testcases() -> impl Responder {
+    // TODO implement route
     HttpResponse::NotImplemented()
 }
 
 async fn update_testcases() -> impl Responder {
+    // TODO implement route
     HttpResponse::NotImplemented()
 }
 
@@ -66,6 +68,7 @@ async fn edit_problem(
     state: web::Data<AppState>,
     path: web::Path<(String,)>,
 ) -> impl Responder {
+    // TODO implement route
     HttpResponse::NotImplemented()
 }
 
@@ -77,14 +80,12 @@ async fn delete_problem(
     use crate::models::Problem;
     use crate::schema::problems;
 
-    log::debug!("Delete problem by slug");
-
     match get_session(&state, &props.access_token, Some("admin")).await {
         Err(response) => response,
         Ok(session) => {
             let connection = state.pool.get().expect("Failed to get connection");
             let slug = path.0.clone();
-            let problem = web::block(move || {
+            let problem: Vec<Problem> = web::block(move || {
                 problems::table
                     .filter(problems::slug.eq(&slug))
                     .load::<Problem>(&connection)

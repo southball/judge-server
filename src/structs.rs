@@ -5,15 +5,15 @@ use chrono::prelude::*;
 #[derive(Serialize, Deserialize)]
 pub struct JudgingProps {
     pub judge_name: String,
-    /// The time when the judging process started.
-    pub judge_date: DateTime<Utc>,
+    /// The date and time when the judging process started.
+    pub judge_time: NaiveDateTime,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct JudgedProps {
     pub judge_name: String,
-    /// The time when the judging process ended.
-    pub judge_date: DateTime<Utc>,
+    /// The date and time when the judging process ended.
+    pub judge_time: NaiveDateTime,
     pub verdict: JudgeOutput,
 }
 

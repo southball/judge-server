@@ -1,5 +1,6 @@
 CREATE TABLE Problems (
     id SERIAL PRIMARY KEY,
+    public BOOLEAN NOT NULL,
     slug TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL,
     time_limit DOUBLE PRECISION NOT NULL,
@@ -17,6 +18,7 @@ CREATE TABLE Users (
 
 CREATE TABLE Contests (
     id SERIAL PRIMARY KEY,
+    public BOOLEAN NOT NULL,
     slug TEXT NOT NULL,
     title TEXT NOT NULL
 );
@@ -31,11 +33,15 @@ CREATE TABLE ContestProblems (
 
 CREATE TABLE Submissions (
     id SERIAL PRIMARY KEY,
+    date TIMESTAMPTZ NOT NULL,
     user_id INT NOT NULL REFERENCES Users(id),
     problem_id INT NOT NULL REFERENCES Problems(id),
     contest_id INT REFERENCES Contests(id),
     contest_problem_id INT REFERENCES ContestProblems(id),
     language TEXT NOT NULL,
     source_code TEXT NOT NULL,
-    verdict TEXT NOT NULL
+    verdict TEXT NOT NULL,
+    time DOUBLE PRECISION,
+    memory BIGINT,
+    verdict_json TEXT
 );

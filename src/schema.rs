@@ -10,6 +10,7 @@ table! {
 table! {
     contests (id) {
         id -> Int4,
+        public -> Bool,
         slug -> Text,
         title -> Text,
     }
@@ -18,6 +19,7 @@ table! {
 table! {
     problems (id) {
         id -> Int4,
+        public -> Bool,
         slug -> Text,
         title -> Text,
         time_limit -> Float8,
@@ -28,6 +30,7 @@ table! {
 table! {
     submissions (id) {
         id -> Int4,
+        date -> Timestamptz,
         user_id -> Int4,
         problem_id -> Int4,
         contest_id -> Nullable<Int4>,
@@ -35,6 +38,9 @@ table! {
         language -> Text,
         source_code -> Text,
         verdict -> Text,
+        time -> Nullable<Float8>,
+        memory -> Nullable<Int8>,
+        verdict_json -> Nullable<Text>,
     }
 }
 

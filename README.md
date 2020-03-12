@@ -27,7 +27,7 @@ This app is not responsible for any of the judging. It will provide an interface
     - [ ] Edit
     - [X] Delete
 - Contests:
-    - [ ] View
+    - [X] View
     - [ ] Create
     - [ ] Edit
     - [ ] Delete

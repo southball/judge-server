@@ -20,10 +20,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
 }
 
 async fn get_submission() -> impl Responder {
+    // TODO implement route
     HttpResponse::NotImplemented()
 }
 
 async fn judge_update_submission() -> impl Responder {
+    // TODO implement route
     HttpResponse::NotImplemented()
 }
 
