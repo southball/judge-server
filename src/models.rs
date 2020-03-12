@@ -47,7 +47,8 @@ pub struct Submission {
     pub contest_id: Option<i32>,
     pub contest_problem_id: Option<i32>,
     pub language: String,
-    pub source_code: String
+    pub source_code: String,
+    pub verdict: String,
 }
 
 #[derive(Clone, Insertable, Serialize, Deserialize)]

@@ -35,14 +35,19 @@ async fn main() -> std::io::Result<()> {
         ]
     ).unwrap();
 
-    log::debug!("Launching server...");
+    log::debug!("Creating folder.");
+    std::fs::create_dir_all(std::path::Path::new(&opts.folder));
 
+    log::debug!("Preparing server...");
     let opts_clone = opts.clone();
-    HttpServer::new(move || {
+    let server = HttpServer::new(move || {
         App::new()
             .configure(configure_app_state(&opts_clone))
             .configure(server::configure_server)
-    })
+    });
+
+    log::debug!("Launching server...");
+    server
         .bind(&opts.address)?
         .run()
         .await

@@ -26,6 +26,10 @@ pub struct Opts {
     /// The encryption key for JWT.
     #[clap(long = "key")]
     pub key: String,
+
+    /// The folder to store all the data, including testcases, checkers, etc.
+    #[clap(long = "folder")]
+    pub folder: String,
 }
 
 pub fn calc_log_level(verbosity: i32, quiet: bool) -> LevelFilter {
