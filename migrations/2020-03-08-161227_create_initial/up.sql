@@ -36,5 +36,6 @@ CREATE TABLE Submissions (
     contest_id INT REFERENCES Contests(id),
     contest_problem_id INT REFERENCES ContestProblems(id),
     language TEXT NOT NULL,
-    source_code TEXT NOT NULL
+    source_code TEXT NOT NULL,
+    verdict TEXT NOT NULL
 );

@@ -34,6 +34,7 @@ table! {
         contest_problem_id -> Nullable<Int4>,
         language -> Text,
         source_code -> Text,
+        verdict -> Text,
     }
 }
 
