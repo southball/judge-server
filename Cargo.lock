@@ -471,6 +471,7 @@ checksum = "80094f509cf8b5ae86a4966a39b3ff66cd7e2a3e594accec3743ff3fabeab5b2"
 dependencies = [
  "num-integer",
  "num-traits",
+ "serde",
  "time",
 ]
 
@@ -943,16 +944,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "judge-definitions"
+version = "0.1.0"
+source = "git+https://github.com/southball/judge-definitions#1b9ecde13a4281541ea6b3a534813f170eec1f33"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "judge-server"
 version = "0.1.0"
 dependencies = [
  "actix-http",
  "actix-rt",
  "actix-web",
+ "chrono",
  "clap",
  "data-encoding",
  "diesel",
  "jsonwebtoken",
+ "judge-definitions",
  "log",
  "ring",
  "serde",

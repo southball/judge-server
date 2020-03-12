@@ -67,5 +67,5 @@ pub struct NewContestSubmission {
     pub contest_id: i32,
     pub contest_problem_id: i32,
     pub language: String,
-    pub source_code: String,
+    pub source_code: String
 }

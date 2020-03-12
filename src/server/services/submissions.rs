@@ -8,7 +8,23 @@ use serde::{Serialize, Deserialize};
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg
+        .service(
+            web::resource("/submission/{submission_id}")
+                .route(web::get().to(get_submission))
+        )
+        .service(
+            web::resource("/submission/{submission_id}/judge")
+                .route(web::put().to(judge_update_submission))
+        )
         .route("/submit", web::post().to(submit));
+}
+
+async fn get_submission() -> impl Responder {
+    HttpResponse::NotImplemented()
+}
+
+async fn judge_update_submission() -> impl Responder {
+    HttpResponse::NotImplemented()
 }
 
 async fn submit(

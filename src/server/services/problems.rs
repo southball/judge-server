@@ -16,29 +16,31 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(
             web::resource("/problems")
                 .route(web::get().to(get_problems))
+                .route(web::post().to(create_problem))
                 .route(web::to(default_handlers::method_not_allowed))
         )
         .service(
             web::resource("/problem/{problem_slug}")
-                .route(web::get().to(get_problem_by_slug))
-                .route(web::delete().to(delete_problem_by_slug))
+                .route(web::get().to(get_problem))
+                .route(web::put().to(edit_problem))
+                .route(web::delete().to(delete_problem))
         )
         .service(
-            web::resource("/problem")
-                .app_data(web::Json::<NewProblem>::configure(|cfg| {
-                    cfg.error_handler(|err, _| {
-                        log::trace!("Failed to parse request: {:?}", err);
-                        HttpResponse::BadRequest()
-                            .json(json_error("Failed to parse request."))
-                            .into()
-                    })
-                }))
-                .route(web::post().to(create_problem))
-                .route(web::to(default_handlers::method_not_allowed))
+            web::resource("/problem/{problem_slug}/testcases")
+                .route(web::get().to(get_testcases))
+                .route(web::put().to(update_testcases))
         );
 }
 
-async fn get_problem_by_slug(
+async fn get_testcases() -> impl Responder {
+    HttpResponse::NotImplemented()
+}
+
+async fn update_testcases() -> impl Responder {
+    HttpResponse::NotImplemented()
+}
+
+async fn get_problem(
     state: web::Data<AppState>,
     path: web::Path<(String,)>,
 ) -> impl Responder {
@@ -60,7 +62,14 @@ async fn get_problem_by_slug(
     }
 }
 
-async fn delete_problem_by_slug(
+async fn edit_problem(
+    state: web::Data<AppState>,
+    path: web::Path<(String,)>,
+) -> impl Responder {
+    HttpResponse::NotImplemented()
+}
+
+async fn delete_problem(
     state: web::Data<AppState>,
     path: web::Path<(String,)>,
     props: web::Json<AccessTokenProps>,

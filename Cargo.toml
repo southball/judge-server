@@ -10,10 +10,12 @@ edition = "2018"
 actix-http = "1.0.1"
 actix-rt = "1.0"
 actix-web = "2.0"
+chrono = { version = "0.4", features = ["serde"] }
 clap = { git = "https://github.com/clap-rs/clap/" }
 data-encoding = "2.2"
 diesel = { version = "1.4.3", features = ["postgres", "r2d2"] }
 jsonwebtoken = "7"
+judge-definitions = { git = "https://github.com/southball/judge-definitions" }
 log = "0.4"
 ring = "0.16"
 serde = { version = "1.0", features = ["derive"] }

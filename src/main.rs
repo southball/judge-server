@@ -6,6 +6,7 @@ mod schema;
 mod models;
 mod server;
 mod json;
+mod structs;
 
 use cli::Opts;
 use clap::derive::Clap;

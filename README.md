@@ -37,3 +37,7 @@ This app is not responsible for any of the judging. It will provide an interface
 - Submissions:
     - [ ] View
     - [X] Submit
+- Judge side API:
+    - [ ] Fetch pending submissions
+    - [ ] Download testcases
+    - [ ] Set judge verdict
