@@ -45,7 +45,7 @@ async fn submit(
                 .load::<Problem>(&connection)
         }).await.unwrap();
 
-        if problem.len() == 0 {
+        if problem.is_empty() {
             return HttpResponse::BadRequest().json(json_error("Problem not found."));
         }
 

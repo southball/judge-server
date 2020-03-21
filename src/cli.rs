@@ -33,13 +33,14 @@ pub struct Opts {
 }
 
 pub fn calc_log_level(verbosity: i32, quiet: bool) -> LevelFilter {
-    match quiet {
-        true => LevelFilter::Off,
-        false => match verbosity {
+    if quiet {
+        LevelFilter::Off
+    } else {
+        match verbosity {
             0 => LevelFilter::Warn,
             1 => LevelFilter::Info,
             2 => LevelFilter::Debug,
             _ => LevelFilter::Trace,
-        },
+        }
     }
 }

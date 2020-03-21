@@ -41,14 +41,13 @@ async fn get_contests(
         contests::table.load::<Contest>(&connection)
     }).await.unwrap();
 
-    match props {
-        Some(props) => match get_session(&state, &props.access_token, None).await {
+    if let Some(props) = &props {
+        match get_session(&state, &props.access_token, None).await {
             Ok(state) => if state.user.is_admin() {
                 return HttpResponse::Ok().json(json_ok(Some(&contests)));
             },
             Err(response) => return response,
-        },
-        _ => ()
+        }
     }
 
     let public_contests = contests.clone()
@@ -77,20 +76,19 @@ async fn get_contest(
             .load::<Contest>(&connection)
     }).await.unwrap();
 
-    if contest.len() == 0 {
+    if contest.is_empty() {
         return default_handlers::not_found().await;
     }
 
     let contest = contest.into_iter().next().unwrap();
 
-    match props {
-        Some(props) => match get_session(&state, &props.access_token, None).await {
+    if let Some(props) = props {
+        match get_session(&state, &props.access_token, None).await {
             Ok(state) => if state.user.is_admin() {
                 return HttpResponse::Ok().json(json_ok(Some(&contest)));
             },
             Err(response) => return response,
-        },
-        _ => ()
+        }
     }
 
     HttpResponse::Ok().json(json_ok(Some(&PublicContest::from(contest))))

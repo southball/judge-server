@@ -36,7 +36,7 @@ async fn main() -> std::io::Result<()> {
     ).unwrap();
 
     log::debug!("Creating folder.");
-    std::fs::create_dir_all(std::path::Path::new(&opts.folder));
+    std::fs::create_dir_all(std::path::Path::new(&opts.folder))?;
 
     log::debug!("Preparing server...");
     let opts_clone = opts.clone();
@@ -62,7 +62,7 @@ fn configure_app_state(opts: &Opts) -> impl Fn(&mut web::ServiceConfig) -> () + 
         log::debug!("Connected to database.");
 
         cfg.data(AppState {
-            pool: pool.clone(),
+            pool,
             opts: opts.clone(),
         });
     }

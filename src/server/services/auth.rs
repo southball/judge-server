@@ -63,7 +63,7 @@ async fn login_public(
             .load::<User>(&connection)
     }).await.unwrap();
 
-    if user.len() == 0 {
+    if user.is_empty() {
         return login_fail;
     }
 
@@ -255,7 +255,7 @@ pub async fn get_session(state: &AppState, jwt: &str, require_permission: Option
             .load::<User>(&connection)
     }).await.unwrap();
 
-    if user.len() == 0 {
+    if user.is_empty() {
         return Err(HttpResponse::BadRequest().json(json_error("User not found.")));
     }
 

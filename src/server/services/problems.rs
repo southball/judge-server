@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder, FromRequest};
+use actix_web::{web, HttpResponse, Responder};
 use crate::AppState;
 use crate::json::*;
 use crate::models::NewProblem;
@@ -6,10 +6,7 @@ use crate::server::auth::get_session;
 use crate::server::default_handlers;
 use diesel::prelude::*;
 use serde::{Serialize, Deserialize};
-use crate::server::services::auth::{AccessTokenProps, Session};
-use actix_http::Response;
-use std::future::Future;
-use actix_http::body::Body;
+use crate::server::services::auth::AccessTokenProps;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg
@@ -57,7 +54,7 @@ async fn get_problem(
             .load::<Problem>(&connection)
     }).await.unwrap();
 
-    if problem.len() == 0 {
+    if problem.is_empty() {
         default_handlers::not_found().await
     } else {
         HttpResponse::Ok().json(json_ok(Some(&problem[0])))
@@ -91,7 +88,7 @@ async fn delete_problem(
                     .load::<Problem>(&connection)
             }).await.unwrap();
 
-            if problem.len() == 0 {
+            if problem.is_empty() {
                 return default_handlers::not_found().await;
             }
 
