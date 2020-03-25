@@ -15,7 +15,7 @@ module.exports = {
                 enforce: "pre",
                 test: /\.tsx?$/,
                 exclude: /node_modules/,
-                use: "tslint-loader",
+                use: "eslint-loader",
             },
             {
                 test: /\.tsx?$/,
@@ -29,5 +29,5 @@ module.exports = {
     resolve: {
         extensions: ['.ts', '.js', '.json'],
     },
-    externals: [nodeExternals()]
+    externals: [nodeExternals()],
 };
