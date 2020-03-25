@@ -15,5 +15,7 @@ module.exports = {
         "quotes": ["warn", "single"],
         "sort-imports": "warn",
         "@typescript-eslint/no-empty-function": "off",
+        "@typescript-eslint/no-use-before-define": "off",
+        "@typescript-eslint/camelcase": "off",
     },
 };
