@@ -20,9 +20,9 @@ export function contestsRouter(): Router {
 }
 
 /**
- * Set `req.contest` to the contest with `id` equal to `contest_id` if found, and `null` otherwise.
+ * Set `req.contest` to the contest with `id` equal to `contest_id` if found, and errs otherwise.
  */
-function fetchContest(req: Request, res: Response, next: (err?: any) => void, contest_id: string): void{
+function fetchContest(req: Request, res: Response, next: (err?: any) => void, contest_id: string): void {
     // TODO complete function
     next();
 }
