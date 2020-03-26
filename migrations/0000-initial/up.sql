@@ -23,7 +23,7 @@ CREATE TABLE Contests
 (
     id     SERIAL PRIMARY KEY,
     public BOOLEAN NOT NULL,
-    slug   TEXT    NOT NULL,
+    slug   TEXT    NOT NULL UNIQUE,
     title  TEXT    NOT NULL
 );
 

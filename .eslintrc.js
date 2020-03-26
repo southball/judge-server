@@ -17,7 +17,7 @@ module.exports = {
         "@typescript-eslint/no-inferrable-types": "off",
         "comma-dangle": ["warn", "always-multiline"],
         "eol-last": ["warn", "always"],
-        "quotes": ["warn", "single"],
+        "quotes": ["warn", "single", {"allowTemplateLiterals": true}],
         "sort-imports": "warn",
     },
 };

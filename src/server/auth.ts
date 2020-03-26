@@ -2,7 +2,7 @@ import {AppState} from '../app-state';
 import {bodySingleTransformerMiddleware} from '../validation';
 import {Err, Ok} from '../json';
 import {IsEmail, IsNotEmpty, IsOptional, Length, Matches, MinLength} from 'class-validator';
-import {JWTTokenPair, SaltedHash} from '../auth/helper';
+import {JWTTokenPair, SaltedHash} from '../auth';
 import {Request, Response, Router} from 'express';
 import {Transform} from 'class-transformer';
 import {User} from '../models';

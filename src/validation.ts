@@ -1,5 +1,5 @@
 import {NextFunction, Request, Response} from 'express';
-import {TransformValidationOptions, transformAndValidate} from 'class-transformer-validator'
+import {TransformValidationOptions, transformAndValidate, ClassType} from 'class-transformer-validator'
 import {Err} from './json';
 
 export const TRANSFORM_VALIDATION_OPTIONS: TransformValidationOptions = {
@@ -17,7 +17,7 @@ export const TRANSFORM_VALIDATION_OPTIONS: TransformValidationOptions = {
     },
 };
 
-export const bodySingleTransformerMiddleware = (targetClass: any) =>
+export const bodySingleTransformerMiddleware = <T extends object>(targetClass: ClassType<T>) =>
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             if (Array.isArray(req.body))

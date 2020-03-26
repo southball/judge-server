@@ -73,11 +73,11 @@ export class JWTTokenPair {
     }
 
     private static generateAccessToken(username: string, key: string): string {
-        return jwt.sign({ username, refresh: false }, key, { expiresIn: '20 minutes' });
+        return jwt.sign({username, refresh: false}, key, {expiresIn: '20 minutes'});
     }
 
     private static generateRefreshToken(username: string, key: string): string {
-        return jwt.sign({ username, refresh: true }, key, { expiresIn: '7 days' });
+        return jwt.sign({username, refresh: true}, key, {expiresIn: '7 days'});
     }
 
     public static forUser(username: string, key: string): JWTTokenPair {
@@ -100,7 +100,7 @@ export class JWTTokenPair {
 
             this.accessToken = JWTTokenPair.generateAccessToken(username, key);
             return true;
-        } catch(err) {
+        } catch (err) {
             console.error(err);
             return false;
         }

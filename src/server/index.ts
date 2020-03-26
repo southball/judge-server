@@ -6,11 +6,13 @@ import authRouter from './auth';
 import contestsRouter from './contests';
 import problemsRouter from './problems';
 import submissionsRouter from './submissions';
+import {userMiddleware} from '../auth';
 
 export default function createServer(): Express {
     const app = express();
 
     app.use(bodyParser.json());
+    app.use(userMiddleware);
 
     app.use(authRouter());
     app.use(contestsRouter());
