@@ -3,19 +3,24 @@ export interface JsonOk<T> {
     data?: T;
 }
 
-export interface JsonError {
+export interface JsonErr<T> {
     success: false;
     message: string;
+    additionalInformation?: T;
 }
 
 export function Ok<T = void>(data?: T): JsonOk<T> {
     if (typeof data === 'undefined') {
-        return { success: true };
+        return {success: true};
     } else {
-        return { success: true, data };
+        return {success: true, data};
     }
 }
 
-export function Err(message: string): JsonError {
-    return { success: false, message };
+export function Err<T = void>(message: string, additionalInformation?: T): JsonErr<T> {
+    if (typeof additionalInformation === 'undefined') {
+        return {success: false, message};
+    } else {
+        return {success: false, message, additionalInformation};
+    }
 }

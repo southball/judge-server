@@ -14,6 +14,7 @@ module.exports = {
         "@typescript-eslint/no-empty-function": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-use-before-define": "off",
+        "@typescript-eslint/no-inferrable-types": "off",
         "comma-dangle": ["warn", "always-multiline"],
         "eol-last": ["warn", "always"],
         "quotes": ["warn", "single"],

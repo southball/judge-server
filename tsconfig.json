@@ -2,6 +2,7 @@
   "include": ["src/**/*"],
   "compilerOptions": {
     "noImplicitAny": true,
-    "inlineSourceMap": true
+    "inlineSourceMap": true,
+    "experimentalDecorators": true
   }
 }

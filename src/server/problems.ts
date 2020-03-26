@@ -1,4 +1,4 @@
-import {Request, Response, Router} from 'express';
+import {NextFunction, Request, Response, Router} from 'express';
 import {Err} from '../json';
 
 export function problemsRouter(): Router {
@@ -22,7 +22,7 @@ export function problemsRouter(): Router {
 /**
  * Set `req.problem` to the problem with `slug` equal to `problem_slug` if found, and errs otherwise.
  */
-function fetchProblemBySlug(req: Request, res: Response, next: (err?: any) => void, problem_slug: string): void {
+function fetchProblemBySlug(req: Request, res: Response, next: NextFunction, problem_slug: string): void {
     // TODO complete function
     next();
 }

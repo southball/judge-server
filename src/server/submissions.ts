@@ -1,4 +1,4 @@
-import {Request, Response, Router} from 'express';
+import {NextFunction, Request, Response, Router} from 'express';
 import {Err} from '../json';
 
 export function submissionsRouter(): Router {
@@ -15,7 +15,7 @@ export function submissionsRouter(): Router {
 /**
  * Set `req.submission` to the submission with `id` equal to `submission_id` if found, and errs otherwise.
  */
-function fetchSubmission(req: Request, res: Response, next: (err?: any) => void, submission_id: string): void {
+function fetchSubmission(req: Request, res: Response, next: NextFunction, submission_id: string): void {
     // TODO complete function
     next();
 }

@@ -1,4 +1,4 @@
-import {Request, Response, Router} from 'express';
+import {NextFunction, Request, Response, Router} from 'express';
 import {Err} from '../json';
 
 export function contestsRouter(): Router {
@@ -7,22 +7,22 @@ export function contestsRouter(): Router {
     router.get('/contests', getContests);
     router.post('/contest', createContest);
 
-    router.param('contest_id', fetchContest);
+    router.param('contest_slug', fetchContestFromSlug);
 
-    router.get('/contest/:contest_id', getContest);
-    router.put('/contest/:contest_id', editContest);
-    router.delete('/contest/:contest_id', deleteContest);
+    router.get('/contest/:contest_slug', getContest);
+    router.put('/contest/:contest_slug', editContest);
+    router.delete('/contest/:contest_slug', deleteContest);
 
-    router.post('/contest/:contest_id/submit', submitToContest);
-    router.get('/contest/:contest_id/scoreboard', getContestScoreboard);
+    router.post('/contest/:contest_slug/submit', submitToContest);
+    router.get('/contest/:contest_slug/scoreboard', getContestScoreboard);
 
     return router;
 }
 
 /**
- * Set `req.contest` to the contest with `id` equal to `contest_id` if found, and errs otherwise.
+ * Set `req.contest` to the contest with `id` equal to `contest_slug` if found, and errs otherwise.
  */
-function fetchContest(req: Request, res: Response, next: (err?: any) => void, contest_id: string): void {
+function fetchContestFromSlug(req: Request, res: Response, next: NextFunction, contest_slug: string): void {
     // TODO complete function
     next();
 }
