@@ -1,9 +1,9 @@
 import {NextFunction, Request, Response, Router} from 'express';
 import {Err} from '../json';
 import {AppState} from '../app-state';
-import {Submission} from '../models';
+import {Contest, Submission} from '../models';
 import {bodySingleTransformerMiddleware} from '../validation';
-import {authUserMiddleware} from '../auth';
+import {authUserMiddleware, userIsAdmin} from '../auth';
 
 export function submissionsRouter(): Router {
     const router = Router();
@@ -35,9 +35,32 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
         return;
     }
 
-    // TODO check user can access contest, otherwise throw not found
+    const submission = result.rows[0] as Submission;
 
-    req.submission = result.rows[0] as Submission;
+    if (!userIsAdmin(req.user) && submission.user_id !== req.user?.id) {
+        // Check whether user can access the submission
+        let accessible: boolean = false;
+
+        if (submission.contest_id !== null) {
+            const result = await pool.query(
+                `SELECT * FROM Contests WHERE id=$1`,
+                [submission.contest_id],
+            );
+            const contest = result.rows[0] as Contest;
+            const now = new Date();
+
+            if (contest.is_public && now > contest.end_time) {
+                accessible = true;
+            }
+
+            // TODO allow access if user can access contest and contest is over
+
+        }
+
+
+    }
+
+    req.submission = submission;
 
     next();
 }

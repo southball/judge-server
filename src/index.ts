@@ -1,9 +1,11 @@
+import 'reflect-metadata';
+
 import * as debug from 'debug';
 import * as dotenv from 'dotenv';
 import {AppState} from './app-state';
 import {Pool} from 'pg';
 import createServer from './server';
-import 'reflect-metadata';
+import {resetDatabaseWithDummyData} from "./data";
 
 const log = debug('judge-server:index');
 dotenv.config();
@@ -28,4 +30,5 @@ function initAppState(): void {
     AppState.set({pool, key});
 }
 
-main();
+if (require.main === module)
+    main();

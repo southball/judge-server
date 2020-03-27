@@ -1,18 +1,79 @@
 export interface Problem {
     id: number;
-    public: boolean;
+    type: string;
+    is_public: boolean;
     slug: string;
     title: string;
+    statement: string;
     time_limit: number;
-    memory_limit: number;
+    memory_limit: string;
+    compile_time_limit: number;
+    compile_memory_limit: string;
+    checker_time_limit: number;
+    checker_memory_limit: string;
+    checker: string;
+    interactor: string;
+    testcases: string[][];
 }
+
+export type PublicProblem = Pick<Problem, 'id' | 'type' | 'slug' | 'title' | 'statement' | 'time_limit' | 'memory_limit'>;
+
+export const toPublicProblem = ({id, type, slug, title, statement, time_limit, memory_limit}: Problem): PublicProblem => ({
+    id,
+    type,
+    slug,
+    title,
+    statement,
+    time_limit,
+    memory_limit,
+});
 
 export interface Contest {
     id: number;
-    public: boolean;
+    is_public: boolean;
     slug: string;
     title: string;
+    start_time: Date;
+    end_time: Date;
+    problems?: ContestProblemInfo[];
 }
+
+export type ContestProblemInfo = Problem & { contest_problem_slug: string };
+
+export type PublicContest = Pick<Contest, 'id' | 'slug' | 'title' | 'start_time' | 'end_time'> & {
+    problems?: PublicContestProblemInfo[];
+};
+
+export type PublicContestProblemInfo = PublicProblem & { contest_problem_slug: string };
+
+export const toPublicContest = ({id, slug, title, start_time, end_time}: Contest): PublicContest => ({
+    id,
+    slug,
+    title,
+    start_time,
+    end_time,
+});
+
+export const toPublicContestProblemInfo =
+    ({
+         id,
+         type,
+         slug,
+         title,
+         statement,
+         time_limit,
+         memory_limit,
+         contest_problem_slug,
+     }: ContestProblemInfo): PublicContestProblemInfo => ({
+        id,
+        type,
+        slug,
+        title,
+        statement,
+        time_limit,
+        memory_limit,
+        contest_problem_slug,
+    });
 
 export interface User {
     id: number;

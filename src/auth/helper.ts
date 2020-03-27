@@ -1,5 +1,7 @@
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
+import {User} from '../models';
+import {Permissions} from '.';
 
 /**
  * A class to generate SHA-512 salt and hash as hexadecimal strings.
@@ -106,3 +108,6 @@ export class JWTTokenPair {
         }
     }
 }
+
+export const userIs = (permission: string, user?: User): boolean => user?.permissions.includes(permission) ?? false;
+export const userIsAdmin = (user?: User): boolean => userIs(Permissions.ADMIN, user);

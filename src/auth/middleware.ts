@@ -2,7 +2,7 @@ import {NextFunction, Request, Response} from 'express';
 import * as jwt from 'jsonwebtoken';
 import {AppState} from '../app-state';
 import {Err} from '../json';
-import {JWTTokenPayload} from './helper';
+import {JWTTokenPayload, userIs} from './helper';
 import {User} from '../models';
 import {Permissions} from "./permissions";
 
@@ -11,6 +11,8 @@ export const userMiddleware = async (req: Request, res: Response, next: NextFunc
     if (typeof req.body.access_token === 'string') {
         try {
             const {refresh, username} = jwt.verify(req.body.access_token, key) as JWTTokenPayload;
+            if (refresh !== false)
+                throw new Error('Cannot use refresh token as access token.');
             if (typeof username !== 'string')
                 throw new Error('Username is not a string.');
 
@@ -42,7 +44,7 @@ export const authMiddleware = (permission?: string | string[]) =>
 
         if (typeof permission !== 'undefined') {
             const requiredPermissions = Array.isArray(permission) ? permission : [permission];
-            const permitted = requiredPermissions.some((permission) => req.user.permissions.includes(permission));
+            const permitted = requiredPermissions.some((permission) => userIs(permission, req.user));
 
             if (!permitted) {
                 res.status(403).json(Err('Not enough permission.'));
@@ -55,4 +57,3 @@ export const authMiddleware = (permission?: string | string[]) =>
 
 export const authUserMiddleware = authMiddleware();
 export const authAdminMiddleware = authMiddleware(Permissions.ADMIN);
-export const authJudgeMiddleware = authMiddleware([Permissions.ADMIN, Permissions.JUDGE]);

@@ -1,11 +1,20 @@
 CREATE TABLE Problems
 (
-    id           SERIAL PRIMARY KEY,
-    public       BOOLEAN          NOT NULL,
-    slug         TEXT             NOT NULL UNIQUE,
-    title        TEXT             NOT NULL,
-    time_limit   DOUBLE PRECISION NOT NULL,
-    memory_limit BIGINT           NOT NULL
+    id                   SERIAL PRIMARY KEY,
+    is_public            BOOLEAN          NOT NULL,
+    type                 TEXT             NOT NULL,
+    slug                 TEXT             NOT NULL UNIQUE,
+    title                TEXT             NOT NULL,
+    statement            TEXT             NOT NULL,
+    time_limit           DOUBLE PRECISION NOT NULL,
+    memory_limit         BIGINT           NOT NULL,
+    compile_time_limit   DOUBLE PRECISION NOT NULL,
+    compile_memory_limit BIGINT           NOT NULL,
+    checker_time_limit   DOUBLE PRECISION NOT NULL,
+    checker_memory_limit BIGINT           NOT NULL,
+    checker              TEXT             NOT NULL DEFAULT '',
+    interactor           TEXT             NOT NULL DEFAULT '',
+    testcases            TEXT[][]         NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE Users
@@ -21,10 +30,12 @@ CREATE TABLE Users
 
 CREATE TABLE Contests
 (
-    id     SERIAL PRIMARY KEY,
-    public BOOLEAN NOT NULL,
-    slug   TEXT    NOT NULL UNIQUE,
-    title  TEXT    NOT NULL
+    id         SERIAL PRIMARY KEY,
+    is_public  BOOLEAN     NOT NULL,
+    slug       TEXT        NOT NULL UNIQUE,
+    title      TEXT        NOT NULL,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time   TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE ContestProblems
