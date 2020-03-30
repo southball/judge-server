@@ -3,6 +3,7 @@
   "compilerOptions": {
     "noImplicitAny": true,
     "inlineSourceMap": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "downlevelIteration": true
   }
 }

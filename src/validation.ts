@@ -1,5 +1,5 @@
+import {ClassType, transformAndValidate, TransformValidationOptions} from 'class-transformer-validator'
 import {NextFunction, Request, Response} from 'express';
-import {TransformValidationOptions, transformAndValidate, ClassType} from 'class-transformer-validator'
 import {Err} from './json';
 
 export const TRANSFORM_VALIDATION_OPTIONS: TransformValidationOptions = {

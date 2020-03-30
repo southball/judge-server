@@ -1,13 +1,14 @@
 import * as bodyParser from 'body-parser';
 import * as express from 'express';
-import {Err} from '../json';
 import {Express} from 'express';
+import {userMiddleware} from '../auth';
+import {resetDatabaseWithDummyData} from '../data.local';
+import {Err} from '../json';
+import {adminRouter} from './admin';
 import authRouter from './auth';
 import contestsRouter from './contests';
 import problemsRouter from './problems';
 import submissionsRouter from './submissions';
-import {userMiddleware} from '../auth';
-import {resetDatabaseWithDummyData} from "../data";
 
 export default function createServer(): Express {
     const app = express();
@@ -19,7 +20,9 @@ export default function createServer(): Express {
     app.use(contestsRouter());
     app.use(problemsRouter());
     app.use(submissionsRouter());
+    app.use(adminRouter());
 
+    // TODO remove from project
     if (process.env.NODE_ENV === 'development') {
         app.get('/reset_db', resetDatabaseWithDummyData);
     }

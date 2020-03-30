@@ -1,17 +1,23 @@
-import 'reflect-metadata';
-
 import * as debug from 'debug';
 import * as dotenv from 'dotenv';
-import {AppState} from './app-state';
+
+import * as fs from 'fs';
+import * as path from 'path';
 import {Pool} from 'pg';
+import 'reflect-metadata';
+import {AppState} from './app-state';
 import createServer from './server';
-import {resetDatabaseWithDummyData} from "./data";
 
 const log = debug('judge-server:index');
 dotenv.config();
 
 async function main(): Promise<void> {
     initAppState();
+
+    await fs.promises.mkdir(
+        path.resolve(process.env.DATAFOLDER),
+        {recursive: true},
+    );
 
     const app = createServer();
     const port = parseInt(process.env.PORT, 10);

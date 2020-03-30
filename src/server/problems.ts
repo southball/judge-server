@@ -1,10 +1,17 @@
-import {NextFunction, Request, Response, Router} from 'express';
-import {Err, Ok} from '../json';
-import {AppState} from '../app-state';
-import {Problem, toPublicProblem} from '../models';
-import {authAdminMiddleware, Permissions, userIsAdmin} from '../auth';
-import {bodySingleTransformerMiddleware} from '../validation';
+import * as archiver from 'archiver';
+import * as bodyParser from 'body-parser';
 import {IsBoolean, IsNotEmpty, IsNumber, IsNumberString, IsOptional, IsString, Matches} from 'class-validator';
+import {NextFunction, Request, Response, Router} from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as stream from 'stream';
+import * as unzipper from 'unzipper';
+import * as yaml from 'yaml';
+import {AppState} from '../app-state';
+import {authAdminMiddleware, authUserMiddleware, Permissions, userIsAdmin} from '../auth';
+import {Err, Ok} from '../json';
+import {Problem, Submission, toPublicProblem} from '../models';
+import {bodySingleTransformerMiddleware} from '../validation';
 
 export class ProblemType {
     public static STANDARD = 'standard';
@@ -23,8 +30,17 @@ export function problemsRouter(): Router {
     router.put('/problem/:problem_slug', authAdminMiddleware, bodySingleTransformerMiddleware(EditProblemProps), editProblem);
     router.delete('/problem/:problem_slug', authAdminMiddleware, deleteProblem);
 
+    router.post('/problem/:problem_slug/submit', authUserMiddleware, bodySingleTransformerMiddleware(SubmitProblemProps), submitProblem);
+
     router.get('/problem/:problem_slug/testcases', authAdminMiddleware, getTestcases);
-    router.put('/problem/:problem_slug/testcases', authAdminMiddleware, updateTestcases);
+    router.put('/problem/:problem_slug/testcases',
+        authAdminMiddleware,
+        bodyParser.raw({limit: process.env.UPLOADLIMIT, type: 'application/zip'}),
+        updateTestcases);
+
+    router.get('/problem/:problem_slug/checker', authAdminMiddleware, getChecker);
+    router.get('/problem/:problem_slug/interactor', authAdminMiddleware, getInteractor);
+    router.get('/problem/:problem_slug/metadata', authAdminMiddleware, getMetadata);
 
     return router;
 }
@@ -43,14 +59,14 @@ async function fetchProblemBySlug(req: Request, res: Response, next: NextFunctio
     );
 
     if (result.rowCount === 0) {
-        res.json(Err('Problem not found.'));
+        res.json(Err('The requested resource is not found.'));
         return;
     }
 
     const problem = result.rows[0] as Problem;
 
     if (problem.is_public !== true && !userIsAdmin(req.user)) {
-        res.json(Err('Problem not found.'));
+        res.json(Err('The requested resource is not found.'));
         return;
     }
 
@@ -76,7 +92,6 @@ async function getProblems(req: Request, res: Response): Promise<void> {
 }
 
 class CreateProblemProps {
-    @IsNotEmpty() access_token: string;
     @IsNotEmpty() type: string = ProblemType.STANDARD;
     @IsBoolean() is_public: boolean = false;
     @IsNotEmpty() @Matches(/^[A-Za-z0-9_-]+$/i) slug: string;
@@ -140,7 +155,6 @@ async function getProblem(req: Request, res: Response): Promise<void> {
 }
 
 class EditProblemProps {
-    @IsOptional() @IsNotEmpty() access_token: string;
     @IsOptional() @IsNotEmpty() type: string = ProblemType.STANDARD;
     @IsOptional() @IsBoolean() is_public: boolean = false;
     @IsOptional() @IsNotEmpty() @Matches(/^[A-Za-z0-9_-]+$/i) slug: string;
@@ -176,8 +190,6 @@ async function editProblem(req: Request, res: Response): Promise<void> {
         }
     }
 
-    const original_slug = problem.slug;
-
     problem.type = body.type ?? problem.type;
     problem.is_public = body.is_public ?? problem.is_public;
     problem.slug = body.slug ?? problem.slug;
@@ -194,23 +206,23 @@ async function editProblem(req: Request, res: Response): Promise<void> {
 
     const result = await pool.query(
             `UPDATE Problems
-             SET type=$1,
-                 is_public=$2,
-                 slug=$3,
-                 title=$4,
-                 statement=$5,
-                 time_limit=$6,
-                 memory_limit=$7,
-                 compile_time_limit=$8,
-                 compile_memory_limit=$9,
-                 checker_time_limit=$10,
-                 checker_memory_limit=$11,
-                 checker=$12,
-                 interactor=$13
-             WHERE slug = $14
+             SET type                 = $1,
+                 is_public            = $2,
+                 slug                 = $3,
+                 title                = $4,
+                 statement            = $5,
+                 time_limit           = $6,
+                 memory_limit         = $7,
+                 compile_time_limit   = $8,
+                 compile_memory_limit = $9,
+                 checker_time_limit   = $10,
+                 checker_memory_limit = $11,
+                 checker              = $12,
+                 interactor           = $13
+             WHERE id = $14
              RETURNING *;
         `,
-        [problem.type, problem.is_public, problem.slug, problem.title, problem.statement, problem.time_limit, problem.memory_limit, problem.compile_time_limit, problem.compile_memory_limit, problem.checker_time_limit, problem.checker_memory_limit, problem.checker, problem.interactor, original_slug]
+        [problem.type, problem.is_public, problem.slug, problem.title, problem.statement, problem.time_limit, problem.memory_limit, problem.compile_time_limit, problem.compile_memory_limit, problem.checker_time_limit, problem.checker_memory_limit, problem.checker, problem.interactor, problem.id],
     );
 
     if (result.rowCount !== 1) {
@@ -237,12 +249,185 @@ async function deleteProblem(req: Request, res: Response): Promise<void> {
     }
 }
 
+class SubmitProblemProps {
+    @IsNotEmpty() language: string;
+    @IsNotEmpty() source_code: string;
+}
+
+async function submitProblem(req: Request, res: Response): Promise<void> {
+    const {pool} = AppState.get();
+    const {language, source_code} = req.body as SubmitProblemProps;
+
+    const submission: Partial<Submission> = {
+        user_id: req.user.id,
+        problem_id: req.problem.id,
+        language,
+        source_code,
+        verdict: 'WJ',
+    };
+
+    const result = await pool.query(
+            `INSERT INTO Submissions (user_id, problem_id, language, source_code, verdict)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id`,
+        [submission.user_id, submission.problem_id, submission.language, submission.source_code, submission.verdict],
+    );
+
+    if (result.rowCount !== 1) {
+        res.json(Err('Failed to submit.'));
+        return;
+    }
+
+    const row = result.rows[0];
+    res.json(Ok({id: row.id}));
+}
+
 async function getTestcases(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
+    const folder = path.resolve(process.env.DATAFOLDER, req.problem.slug);
+    await fs.promises.mkdir(folder, {recursive: true});
+
+    try {
+        const archive = archiver('zip');
+
+        archive.on('warning', (err) => {
+            if (err.code === 'ENOENT') {
+                console.error(err);
+            } else {
+                throw err;
+            }
+        });
+
+        archive.on('error', (err) => {
+            throw err;
+        });
+
+        archive.pipe(res);
+
+        archive.directory(folder, false);
+        archive.finalize();
+    } catch (err) {
+        res.status(500).end();
+        return;
+    }
 }
 
 async function updateTestcases(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
+    const {pool} = AppState.get();
+
+    if (req.is('application/zip') && Buffer.isBuffer(req.body)) {
+        const folder = path.resolve(process.env.DATAFOLDER, req.problem.slug);
+        const body = req.body as Buffer;
+        const streamify = (buffer: Buffer): stream.PassThrough => {
+            const pipe = new stream.PassThrough();
+            pipe.end(buffer);
+            return pipe;
+        };
+
+        const inRule = [/^in\/(.*)\.in$/, /^in\/(.*)\.txt$/, /^(.*)\.in$/];
+        const outRule = [/^out\/(.*)\.out$/, /^out\/(.*)\.txt$/, /^(.*)\.out$/];
+
+        const iterator = streamify(body).pipe(unzipper.Parse({forceStream: true}))
+        const inFileSet = new Set<string>();
+        const outFileSet = new Set<string>();
+
+        const fileWritePromises = [] as Promise<any>[];
+
+        zipLoop: for await (const entry of iterator) {
+            if (entry.type !== 'File')
+                continue;
+
+            for (const rule of inRule)
+                if (rule.test(entry.path)) {
+                    const filenamePart = entry.path.match(rule)[1];
+                    const location = path.resolve(folder, `${filenamePart}.in`);
+                    const stream = entry.pipe(fs.createWriteStream(location));
+                    fileWritePromises.push(new Promise((resolve) => stream.on('finish', resolve)));
+                    inFileSet.add(filenamePart);
+                    continue zipLoop;
+                }
+
+            for (const rule of outRule)
+                if (rule.test(entry.path)) {
+                    const filenamePart = entry.path.match(rule)[1];
+                    const location = path.resolve(folder, `${filenamePart}.out`);
+                    const stream = entry.pipe(fs.createWriteStream(location));
+                    fileWritePromises.push(new Promise((resolve) => stream.on('finish', resolve)));
+                    outFileSet.add(filenamePart);
+                    continue zipLoop;
+                }
+
+            entry.autodrain();
+        }
+
+        await Promise.all(fileWritePromises);
+
+        const setIntersect = <T>(a: Set<T>, b: Set<T>): Set<T> => new Set([...a].filter(i => b.has(i)));
+        const setDifference = <T>(a: Set<T>, b: Set<T>): Set<T> => new Set([...a].filter(i => !b.has(i)));
+
+        const testcases = [] as [string, string][];
+        const warnings = [] as string[];
+
+        setIntersect(inFileSet, outFileSet).forEach((testname) => {
+            testcases.push([`${testname}.in`, `${testname}.out`])
+        });
+
+        setDifference(inFileSet, outFileSet).forEach((testname) => {
+            warnings.push(`Input file ${testname} exists but the corresponding output file does not exist.`);
+            fs.unlinkSync(path.resolve(folder, `${testname}.in`));
+        });
+        setDifference(outFileSet, inFileSet).forEach((testname) => {
+            warnings.push(`Output file ${testname} exists but the corresponding input file does not exist.`);
+            fs.unlinkSync(path.resolve(folder, `${testname}.out`));
+        });
+
+        await pool.query(
+            `UPDATE Problems
+            SET testcases = $2
+            WHERE id = $1`,
+            [req.problem.id, testcases],
+        );
+
+        res.json(Ok({
+            testcases,
+            warnings,
+        }));
+    } else {
+        res.json(Err('Only MIME type application/zip and the zip file as body is supported.'));
+    }
+}
+
+async function getChecker(req: Request, res: Response): Promise<void> {
+    if (req.problem.checker !== '') {
+        res.end(req.problem.checker);
+    } else {
+        res.status(404).end('Not found.');
+    }
+}
+
+async function getInteractor(req: Request, res: Response): Promise<void> {
+    if (req.problem.interactor !== '') {
+        res.end(req.problem.interactor);
+    } else {
+        res.status(404).end('Not found.');
+    }
+}
+
+async function getMetadata(req: Request, res: Response): Promise<void> {
+    const {title, time_limit, memory_limit, compile_time_limit, compile_memory_limit, checker_time_limit, checker_memory_limit, testcases} = req.problem;
+
+    const metadataYaml = yaml.stringify({
+        problem_name: title,
+        time_limit,
+        memory_limit: +memory_limit,
+        compile_time_limit,
+        compile_memory_limit: +compile_memory_limit,
+        checker_time_limit,
+        checker_memory_limit: +checker_memory_limit,
+        testcases: testcases.map(([input, output]) => ({input, output})),
+    });
+
+    res.type('application/x-yaml')
+        .end(metadataYaml);
 }
 
 export default problemsRouter;

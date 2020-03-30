@@ -1,3 +1,4 @@
+DROP TABLE ContestRegistrations;
 DROP TABLE Submissions;
 DROP TABLE ContestProblems;
 DROP TABLE Contests;

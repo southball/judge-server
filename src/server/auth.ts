@@ -1,11 +1,11 @@
-import {AppState} from '../app-state';
-import {bodySingleTransformerMiddleware} from '../validation';
-import {Err, Ok} from '../json';
-import {IsEmail, IsNotEmpty, IsOptional, Length, Matches, MinLength} from 'class-validator';
-import {JWTTokenPair, SaltedHash} from '../auth';
-import {Request, Response, Router} from 'express';
 import {Transform} from 'class-transformer';
+import {IsEmail, IsNotEmpty, IsOptional, Length, Matches, MinLength} from 'class-validator';
+import {Request, Response, Router} from 'express';
+import {AppState} from '../app-state';
+import {JWTTokenPair, SaltedHash} from '../auth';
+import {Err, Ok} from '../json';
 import {User} from '../models';
+import {bodySingleTransformerMiddleware} from '../validation';
 
 export function authRouter(): Router {
     const router = Router();

@@ -2,15 +2,23 @@ import {NextFunction, Request, Response} from 'express';
 import * as jwt from 'jsonwebtoken';
 import {AppState} from '../app-state';
 import {Err} from '../json';
-import {JWTTokenPayload, userIs} from './helper';
 import {User} from '../models';
-import {Permissions} from "./permissions";
+import {JWTTokenPayload, userIs} from './helper';
+import {Permissions} from './permissions';
 
 export const userMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const {key, pool} = AppState.get();
-    if (typeof req.body.access_token === 'string') {
+
+    let accessToken: string | null = null;
+
+    const authorization = req.header('authorization');
+    if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+        accessToken = authorization.replace(/^Bearer (.*)$/, '$1');
+    }
+
+    if (accessToken !== null) {
         try {
-            const {refresh, username} = jwt.verify(req.body.access_token, key) as JWTTokenPayload;
+            const {refresh, username} = jwt.verify(accessToken, key) as JWTTokenPayload;
             if (refresh !== false)
                 throw new Error('Cannot use refresh token as access token.');
             if (typeof username !== 'string')

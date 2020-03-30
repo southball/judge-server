@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
-import {User} from '../models';
 import {Permissions} from '.';
+import {User} from '../models';
 
 /**
  * A class to generate SHA-512 salt and hash as hexadecimal strings.

@@ -1,18 +1,23 @@
+import {Type} from 'class-transformer';
+import {IsBoolean, IsDate, IsNotEmpty, IsNumber, IsOptional, ValidateNested} from 'class-validator';
 import {NextFunction, Request, Response, Router} from 'express';
-import {Err, Ok} from '../json';
-import {authAdminMiddleware, authUserMiddleware, userIsAdmin} from '../auth';
+import {PoolClient} from 'pg';
 import {AppState} from '../app-state';
+import {authAdminMiddleware, authUserMiddleware, userIsAdmin} from '../auth';
+import {Err, Ok} from '../json';
 import {
     Contest,
     ContestProblem,
     ContestProblemInfo,
-    Problem, PublicContest,
+    Problem,
+    PublicContest,
+    RichSubmission,
+    Submission,
     toPublicContest,
-    toPublicContestProblemInfo
+    toPublicContestProblemInfo,
+    User,
 } from '../models';
 import {bodySingleTransformerMiddleware} from '../validation';
-import {ArrayUnique, IsBoolean, IsDate, IsNotEmpty, IsNumber, ValidateNested} from "class-validator";
-import {Type} from "class-transformer";
 
 export function contestsRouter(): Router {
     const router = Router();
@@ -24,6 +29,9 @@ export function contestsRouter(): Router {
         createContest);
 
     router.param('contest_slug', fetchContestFromSlug);
+    router.param('contest_problem_slug', fetchContestProblemFromSlug);
+
+    router.get('/contest/:contest_slug/registrants', getContestRegistrants)
 
     router.get('/contest/:contest_slug', getContest);
     router.put('/contest/:contest_slug',
@@ -34,42 +42,112 @@ export function contestsRouter(): Router {
         authAdminMiddleware,
         deleteContest);
 
-    router.post('/contest/:contest_slug/submit',
+    router.post('/contest/:contest_slug/problem/:contest_problem_slug/submit',
         authUserMiddleware,
+        userContestRunningMiddleware,
         bodySingleTransformerMiddleware(SubmitToContestProps),
         submitToContest);
-    router.get('/contest/:contest_slug/scoreboard', getContestScoreboard);
+    router.get('/contest/:contest_slug/submissions', getContestSubmissions);
 
     return router;
 }
 
+async function userContestRunningMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const {pool} = AppState.get();
+    const {contest, user} = req;
+
+    const now = new Date();
+    if (contest.start_time > now) {
+        res.json(Err('The contest has not yet started.'));
+        return;
+    }
+    if (contest.end_time < now) {
+        res.json(Err('The contest has already ended.'));
+        return;
+    }
+
+    // Check that the user has already solved the problem.
+    const result = await pool.query(
+            `SELECT *
+             FROM ContestRegistrations
+             WHERE contest_id = $1
+               AND user_id = $2`,
+        [contest.id, user.id],
+    );
+
+    if (result.rowCount !== 1) {
+        res.json(Err('You have not yet joined the contest.'));
+        return;
+    }
+
+    next();
+}
+
 /**
- * Set `req.contest` to the contest with `id` equal to `contest_slug` if found, and errs otherwise.
+ * Set `req.contest` to the contest with `id` equal to `contest_slug` and `req.contestProlems` to corresponding
+ * problems if found, and errs otherwise.
  */
 async function fetchContestFromSlug(req: Request, res: Response, next: NextFunction, contest_slug: string): Promise<void> {
     const {pool} = AppState.get();
 
+    // Fetch contest
+    {
+        const result = await pool.query(
+                `SELECT *
+                 FROM Contests
+                 WHERE slug = $1`,
+            [contest_slug],
+        );
+
+        if (result.rowCount === 0) {
+            res.json(Err('Contest not found.'));
+            return;
+        }
+
+        const contest = result.rows[0] as Contest;
+
+        if (contest.is_public !== true && !userIsAdmin(req.user)) {
+            res.json(Err('Contest not found.'));
+            return;
+        }
+
+        req.contest = contest;
+    }
+
+    // Fetch contest problems
+    {
+        const {contest} = req;
+        const result = await pool.query(
+                `SELECT *
+                 FROM ContestProblems
+                 WHERE contest_id = $1`,
+            [contest.id],
+        );
+
+        const contestProblems = result.rows as ContestProblem[];
+        req.contestProblems = contestProblems;
+    }
+
+    next();
+}
+
+async function fetchContestProblemFromSlug(req: Request, res: Response, next: NextFunction, contest_problem_slug: string): Promise<void> {
+    const {pool} = AppState.get();
+
     const result = await pool.query(
             `SELECT *
-             FROM Contests
+             FROM ContestProblems
              WHERE slug = $1`,
-        [contest_slug],
+        [contest_problem_slug],
     );
 
     if (result.rowCount === 0) {
-        res.json(Err('Contest not found.'));
+        res.json(Err('Contest problem not found.'));
         return;
     }
 
-    const contest = result.rows[0] as Contest;
-
-    if (contest.is_public !== true && !userIsAdmin(req.user)) {
-        res.json(Err('Contest not found.'));
-        return;
-    }
-
-    req.contest = contest;
-
+    const contestProblem = result.rows[0] as ContestProblem;
+    req.contestProblem = contestProblem;
     next();
 }
 
@@ -77,7 +155,8 @@ async function getContests(req: Request, res: Response): Promise<void> {
     const {pool} = AppState.get();
 
     try {
-        const result = await pool.query(`SELECT * FROM Contests`);
+        const result = await pool.query(`SELECT *
+                                         FROM Contests`);
         const contests = result.rows as Contest[];
 
         if (userIsAdmin(req.user)) {
@@ -93,19 +172,83 @@ async function getContests(req: Request, res: Response): Promise<void> {
     }
 }
 
+async function getContestRegistrants(req: Request, res: Response): Promise<void> {
+    const {pool} = AppState.get();
+    const result = await pool.query(
+            `SELECT U.username, U.display_name
+             FROM ContestRegistrations CR
+                      JOIN Users U ON CR.contest_id = U.id
+             WHERE CR.contest_id = $1`,
+        [req.contest.id],
+    );
+
+    const users = result.rows as Partial<User>[];
+
+    res.json(Ok(users));
+}
+
 class CreateContestProblemProps {
     @IsNotEmpty() slug: string;
     @IsNumber() id: number;
 }
 
 class CreateContestProps {
-    @IsNotEmpty() access_token: string;
     @IsBoolean() is_public: boolean = false;
     @IsNotEmpty() slug: string;
     @IsNotEmpty() title: string;
     @ValidateNested({each: true}) @Type(() => CreateContestProblemProps) problems: CreateContestProblemProps[];
     @IsDate() @Type(() => Date) start_time: Date;
     @IsDate() @Type(() => Date) end_time: Date;
+}
+
+async function validateProblemSlugs(problems: CreateContestProblemProps[]): Promise<void> {
+    const {pool} = AppState.get();
+
+    // Check that the problem slugs are unique.
+    {
+        const slugSet = new Set([...problems.map((problem) => problem.slug)]);
+        const idSet = new Set([...problems.map((problem) => problem.id)]);
+
+        if (slugSet.size !== problems.length || idSet.size !== problems.length) {
+            throw Err('Problem slugs and/or IDs are not unique.');
+        }
+    }
+
+    // Check that the problem slugs are valid.
+    {
+        const result = await pool.query(
+                `SELECT *
+                 FROM Problems
+                 WHERE id = ANY ($1)`,
+            [problems.map((slug) => slug.id)],
+        );
+
+        if (result.rowCount !== problems.length) {
+            const existingSlugs: Set<number> = new Set(result.rows.map((problem: Problem) => problem.id));
+            const wrongSlugs = problems.filter((slug) => !existingSlugs.has(slug.id));
+            throw Err('Invalid problem IDs.', wrongSlugs);
+        }
+    }
+}
+
+async function createContestProblems(client: PoolClient, contest: Contest, problems: CreateContestProblemProps[]): Promise<ContestProblem[]> {
+    // create each problem
+    const contestProblems = [];
+    for (const problemSlug of problems) {
+        const result = await client.query(
+                `INSERT INTO ContestProblems (slug, contest_id, problem_id)
+                 VALUES ($1, $2, $3)
+                 RETURNING *`,
+            [problemSlug.slug, contest.id, problemSlug.id],
+        );
+
+        if (result.rowCount !== 1)
+            throw new Error('Failed to create contest problem.');
+
+        contestProblems.push(result.rows[0] as ContestProblem);
+    }
+
+    return contestProblems;
 }
 
 async function createContest(req: Request, res: Response): Promise<void> {
@@ -115,7 +258,9 @@ async function createContest(req: Request, res: Response): Promise<void> {
     // Check that the slug is not already used
     {
         const result = await pool.query(
-            `SELECT * FROM Contests WHERE slug=$1`,
+                `SELECT *
+                 FROM Contests
+                 WHERE slug = $1`,
             [slug],
         );
 
@@ -125,40 +270,22 @@ async function createContest(req: Request, res: Response): Promise<void> {
         }
     }
 
-    // Check that the problem slugs are unique.
-    {
-        const slugSet = new Set([...problems.map((problem) => problem.slug)]);
-        const idSet = new Set([...problems.map((problem) => problem.id)]);
-
-        if (slugSet.size !== problems.length || idSet.size !== problems.length) {
-            res.json(Err('Problem slugs and/or IDs are not unique.'));
-            return;
-        }
+    try {
+        await validateProblemSlugs(problems);
+    } catch (errResponse) {
+        res.json(errResponse);
+        return;
     }
 
-    // Check that the problem slugs are valid.
-    {
-        const result = await pool.query(
-            `SELECT * FROM Problems WHERE id = ANY ($1)`,
-            [problems.map((slug) => slug.id)],
-        );
-
-        if (result.rowCount !== problems.length) {
-            const existingSlugs: Set<number> = new Set(result.rows.map((problem: Problem) => problem.id));
-            const wrongSlugs = problems.filter((slug) => !existingSlugs.has(slug.id));
-            res.json(Err('Invalid problem IDs.', wrongSlugs));
-            return;
-        }
-    }
-
-    // Begin transaction
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
 
         const result = await client.query(
-            `INSERT INTO Contests (is_public, slug, title, start_time, end_time) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+                `INSERT INTO Contests (is_public, slug, title, start_time, end_time)
+                 VALUES ($1, $2, $3, $4, $5)
+                 RETURNING *`,
             [is_public, slug, title, start_time, end_time],
         );
 
@@ -166,27 +293,14 @@ async function createContest(req: Request, res: Response): Promise<void> {
             throw new Error('Failed to create contest.');
         const contest = result.rows[0] as Contest;
 
-        // create each problem
-        const contestProblems = [];
-        for (const problemSlug of problems) {
-            const result = await client.query(
-                `INSERT INTO ContestProblems (slug, contest_id, problem_id) VALUES ($1, $2, $3) RETURNING *`,
-                [problemSlug.slug, contest.id, problemSlug.id],
-            );
-
-            if (result.rowCount !== 1)
-                throw new Error('Failed to create contest problem.');
-
-            contestProblems.push(result.rows[0] as ContestProblem);
-        }
-
+        const contestProblems = await createContestProblems(client, contest, problems);
         await client.query(`COMMIT`);
 
         res.json(Ok({
             ...contest,
             problems: contestProblems,
         }));
-    } catch(err) {
+    } catch (err) {
         console.error(err);
         await client.query('ROLLBACK');
         res.json(Err('Failed to create contest.'));
@@ -201,9 +315,10 @@ async function getContest(req: Request, res: Response): Promise<void> {
 
     try {
         const result = await pool.query(
-            `SELECT CP.slug AS contest_problem_slug, P.* FROM ContestProblems CP 
-            JOIN Problems P on CP.problem_id = P.id
-            WHERE contest_id=$1`,
+                `SELECT CP.slug AS contest_problem_slug, P.*
+                 FROM ContestProblems CP
+                          JOIN Problems P on CP.problem_id = P.id
+                 WHERE contest_id = $1`,
             [contest.id],
         );
 
@@ -227,25 +342,167 @@ async function getContest(req: Request, res: Response): Promise<void> {
 }
 
 class EditContestProps {
+    @IsOptional() @IsBoolean() is_public: boolean = false;
+    @IsOptional() @IsNotEmpty() slug: string;
+    @IsOptional() @IsNotEmpty() title: string;
+    @IsOptional() @ValidateNested({each: true}) @Type(() => CreateContestProblemProps) problems: CreateContestProblemProps[];
+    @IsOptional() @IsDate() @Type(() => Date) start_time: Date;
+    @IsOptional() @IsDate() @Type(() => Date) end_time: Date;
 }
 
 async function editContest(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
+    const {pool} = AppState.get();
+    const contest = req.contest as Contest;
+    const body = req.body as EditContestProps;
+
+    if (typeof body.slug !== 'undefined' && body.slug !== contest.slug) {
+        // check whether the slug is already used
+        const result = await pool.query(`SELECT *
+                                         FROM Contests
+                                         WHERE slug = $1`, [body.slug]);
+
+        if (result.rowCount !== 0) {
+            res.json(Err('The slug is already used by another contest.'));
+            return;
+        }
+    }
+
+    contest.is_public = body.is_public ?? contest.is_public;
+    contest.slug = body.slug ?? contest.slug;
+    contest.title = body.title ?? contest.title;
+    contest.start_time = body.start_time ?? contest.start_time;
+    contest.end_time = body.end_time ?? contest.end_time;
+
+    if (body.problems ?? false) {
+        try {
+            await validateProblemSlugs(body.problems);
+        } catch (errResponse) {
+            res.json(errResponse);
+            return;
+        }
+    }
+
+    const client = await pool.connect();
+
+    try {
+        await client.query(
+                `UPDATE Contests
+                 SET is_public  = $1,
+                     slug       = $2,
+                     title      = $3,
+                     start_time = $4,
+                     end_time   = $5
+                 WHERE id = $6
+                 RETURNING *`,
+            [contest.is_public, contest.slug, contest.title, contest.start_time, contest.end_time, contest.id],
+        );
+
+        if (body.problems ?? false) {
+            await client.query(`DELETE
+                                FROM ContestProblems
+                                WHERE contest_id = $1`, [contest.id]);
+            await createContestProblems(client, contest, body.problems);
+        }
+
+        await client.query(`COMMIT`);
+
+        const result = await pool.query(
+                `SELECT CP.slug AS contest_problem_slug, P.*
+                 FROM ContestProblems CP
+                          JOIN Problems P on CP.problem_id = P.id
+                 WHERE contest_id = $1`,
+            [contest.id],
+        );
+
+        res.json(Ok({
+            ...contest,
+            problems: result.rows as ContestProblemInfo[],
+        } as Contest))
+    } catch (err) {
+        console.error(err);
+        await client.query('ROLLBACK');
+        res.json(Err('Failed to edit contest.'));
+    } finally {
+        client.release();
+    }
 }
 
 async function deleteContest(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
+    // TODO drop linked resource
+    const {pool} = AppState.get();
+
+    try {
+        await pool.query(
+                `DELETE
+                 FROM Contests
+                 WHERE id = $1`,
+            [req.contest.id],
+        );
+
+        res.json(Ok());
+    } catch (err) {
+        console.error(err);
+        res.json(Err('Failed to delete contest.'));
+    }
 }
 
 class SubmitToContestProps {
+    @IsNotEmpty() language: string;
+    @IsNotEmpty() source_code: string;
 }
 
 async function submitToContest(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
+    const {pool} = AppState.get();
+    const {language, source_code} = req.body as SubmitToContestProps;
+
+    const submission: Partial<Submission> = {
+        user_id: req.user.id,
+        problem_id: req.problem.id,
+        contest_id: req.contest.id,
+        contest_problem_id: req.contestProblem.id,
+        language,
+        source_code,
+        verdict: 'WJ',
+    };
+
+    const result = await pool.query(
+            `INSERT INTO Submissions (user_id, problem_id, contest_id, contest_problem_id, language, source_code,
+                                      verdict)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING id`,
+        [submission.user_id, submission.problem_id, submission.contest_id, submission.contest_problem_id, submission.language, submission.source_code, submission.verdict],
+    );
+
+    if (result.rowCount !== 1) {
+        res.json(Err('Failed to submit.'));
+        return;
+    }
+
+    const row = result.rows[0];
+    res.json(Ok({id: row.id}));
 }
 
-async function getContestScoreboard(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
+// Return list of submissions and verdict, without the source code.
+async function getContestSubmissions(req: Request, res: Response): Promise<void> {
+    const {pool} = AppState.get();
+    const {contest} = req;
+
+    const submissions = await pool.query(`
+                SELECT S.*, U.username, P.slug AS problem_slug, C.slug AS contest_slug, CP.slug AS contest_problem_slug
+                FROM Submissions S
+                         JOIN Problems P on S.problem_id = P.id
+                         JOIN Users U on S.user_id = U.id
+                         LEFT JOIN Contests C on S.contest_id = C.id
+                         LEFT JOIN ContestProblems CP on S.contest_problem_id = CP.id
+                WHERE S.contest_id = $1`,
+        [contest.id],
+    )
+        .then((result) => result.rows as RichSubmission[])
+        .then((result) => result.map(({id, date, language, memory, time, verdict, contest_problem_slug}: RichSubmission) => ({
+            id, date, contest_problem_slug, language, verdict, memory, time,
+        })));
+
+    res.json(Ok(submissions));
 }
 
 export default contestsRouter;

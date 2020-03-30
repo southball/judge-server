@@ -18,6 +18,9 @@ module.exports = {
         "comma-dangle": ["warn", "always-multiline"],
         "eol-last": ["warn", "always"],
         "quotes": ["warn", "single", {"allowTemplateLiterals": true}],
-        "sort-imports": "warn",
+        "sort-imports": ["warn", {
+            "ignoreDeclarationSort": true,
+            "ignoreCase": true
+        }],
     },
 };

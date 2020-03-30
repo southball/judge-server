@@ -1,9 +1,11 @@
+import {Type} from 'class-transformer';
+import {IsArray, IsNotEmpty, IsNumber, IsString} from 'class-validator';
 import {NextFunction, Request, Response, Router} from 'express';
-import {Err} from '../json';
 import {AppState} from '../app-state';
-import {Contest, Submission} from '../models';
+import {authAdminMiddleware, userIsAdmin} from '../auth';
+import {Err, Ok} from '../json';
+import {Contest, Problem, Submission, toPublicSubmission} from '../models';
 import {bodySingleTransformerMiddleware} from '../validation';
-import {authUserMiddleware, userIsAdmin} from '../auth';
 
 export function submissionsRouter(): Router {
     const router = Router();
@@ -11,8 +13,10 @@ export function submissionsRouter(): Router {
     router.param('submission_id', fetchSubmission);
 
     router.get('/submission/:submission_id', getSubmission);
-    router.put('/submission/:submission_id/judge', updateSubmissionJudge);
-    router.post('/submit', authUserMiddleware, bodySingleTransformerMiddleware(SubmitProps), submit);
+    router.put('/submission/:submission_id/judge',
+        authAdminMiddleware,
+        bodySingleTransformerMiddleware(UpdateSubmissionJudgeProps),
+        updateSubmissionJudge);
 
     return router;
 }
@@ -37,48 +41,133 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
 
     const submission = result.rows[0] as Submission;
 
+    req.submission = submission;
+
+    // Create the RichSubmission object.
+    if (submission.contest_id === null) {
+        const result = await pool.query(
+                `SELECT U.username, P.slug AS problem_slug, C.slug AS contest_slug, CP.slug AS contest_problem_slug
+                 FROM Submissions S
+                          JOIN Problems P on S.problem_id = P.id
+                          JOIN Users U on S.user_id = U.id
+                          LEFT JOIN Contests C on S.contest_id = C.id
+                          LEFT JOIN ContestProblems CP on S.contest_problem_id = CP.id
+                 WHERE S.id = $1`,
+            [submission.id],
+        );
+
+        const row = result.rows[0];
+
+        req.richSubmission = {
+            ...req.submission,
+            username: row.username,
+            problem_slug: row.problem_slug,
+            contest_slug: row.contest_slug,
+            contest_problem_slug: row.contest_problem_slug,
+        };
+    }
+
     if (!userIsAdmin(req.user) && submission.user_id !== req.user?.id) {
         // Check whether user can access the submission
         let accessible: boolean = false;
 
+        // If the submission is from a contest, the contest must be considered first.
         if (submission.contest_id !== null) {
             const result = await pool.query(
-                `SELECT * FROM Contests WHERE id=$1`,
+                `SELECT *
+                     FROM Contests
+                     WHERE id = $1`,
                 [submission.contest_id],
             );
             const contest = result.rows[0] as Contest;
             const now = new Date();
 
-            if (contest.is_public && now > contest.end_time) {
+            if (now > contest.end_time) {
+                if (contest.is_public && now > contest.end_time) {
+                    accessible = true;
+                }
+
+                const result = await pool.query(
+                    `SELECT * FROM ContestRegistrations WHERE
+                            contest_id = $1 AND user_id = $2`,
+                    [submission.contest_id, submission.user_id],
+                );
+
+                if (result.rowCount === 1) {
+                    accessible = true;
+                }
+            }
+        } else {
+            // Consider whether the user can already access the problem.
+            const result = await pool.query(
+                `SELECT * FROM Problems WHERE id = $1`,
+                [submission.problem_id],
+            );
+
+            const problem: Problem = result.rows[0];
+
+            if (problem.is_public) {
                 accessible = true;
             }
-
-            // TODO allow access if user can access contest and contest is over
-
         }
 
-
+        if (!accessible) {
+            res.json(Err('Submission not found!'));
+            return;
+        }
     }
-
-    req.submission = submission;
 
     next();
 }
 
 async function getSubmission(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
+    if (userIsAdmin(req.user)) {
+        res.json(Ok(req.richSubmission));
+    } else {
+        res.json(Ok(toPublicSubmission(req.richSubmission)));
+    }
+}
+
+class JudgeTestcaseOutput {
+    @IsNotEmpty() verdict: string;
+    @IsNumber() time: number;
+    @IsNumber() memory: number;
+    @IsString() checker_output: string;
+    @IsString() sandbox_output: string;
+}
+
+class UpdateSubmissionJudgeProps {
+    @IsNotEmpty() verdict: string;
+    @IsNumber() time: number;
+    @IsNumber() memory: number;
+    @IsArray() @Type(() => JudgeTestcaseOutput) testcases: JudgeTestcaseOutput[];
 }
 
 async function updateSubmissionJudge(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
-}
+    const {pool} = AppState.get();
+    const body = req.body as UpdateSubmissionJudgeProps;
 
-class SubmitProps {
+    try {
+        await pool.query(
+                `UPDATE Submissions
+                 SET verdict=$1,
+                     time=$2,
+                     memory=$3,
+                     verdict_json=$4
+                 WHERE id = $5`,
+            [
+                body.verdict,
+                body.time,
+                body.memory,
+                JSON.stringify(body),
+                req.submission.id,
+            ],
+        );
 
-}
-
-async function submit(req: Request, res: Response): Promise<void> {
-    res.json(Err('Not yet implemented!'));
+        res.json(Ok());
+    } catch (err) {
+        res.json(Err('Failed to update submission.'));
+    }
 }
 
 export default submissionsRouter;
