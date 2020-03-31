@@ -10,7 +10,7 @@ export function adminRouter(): Router {
     const router = Router();
 
     router.get('/admin/submissions', authAdminMiddleware, bodySingleTransformerMiddleware(GetSubmissionsProps), getSubmissions);
-    router.get('/admin/users', authAdminMiddleware,  getUsers);
+    router.get('/admin/users', authAdminMiddleware, getUsers);
 
     return router;
 }

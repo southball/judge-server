@@ -452,7 +452,7 @@ class SubmitToContestProps {
 }
 
 async function submitToContest(req: Request, res: Response): Promise<void> {
-    const {pool} = AppState.get();
+    const {pool, queue} = AppState.get();
     const {language, source_code} = req.body as SubmitToContestProps;
 
     const submission: Partial<Submission> = {
@@ -478,8 +478,20 @@ async function submitToContest(req: Request, res: Response): Promise<void> {
         return;
     }
 
-    const row = result.rows[0];
-    res.json(Ok({id: row.id}));
+    const {id} = result.rows[0];
+
+    try {
+        // Push submission ID to queue.
+        const channel = await queue.createChannel();
+        await channel.assertQueue('JUDGE_QUEUE');
+        await channel.sendToQueue('JUDGE_QUEUE', Buffer.from(id.toString()));
+    } catch (err) {
+        console.error(err);
+        res.json(Err('Failed to push submission into judge queue.'));
+        return;
+    }
+
+    res.json(Ok({id}));
 }
 
 // Return list of submissions and verdict, without the source code.

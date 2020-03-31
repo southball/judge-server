@@ -1,3 +1,4 @@
+import * as amqplib from 'amqplib';
 import * as debug from 'debug';
 import * as dotenv from 'dotenv';
 
@@ -12,7 +13,7 @@ const log = debug('judge-server:index');
 dotenv.config();
 
 async function main(): Promise<void> {
-    initAppState();
+    await initAppState();
 
     await fs.promises.mkdir(
         path.resolve(process.env.DATAFOLDER),
@@ -25,15 +26,16 @@ async function main(): Promise<void> {
     app.listen(port);
 }
 
-function initAppState(): void {
+async function initAppState(): Promise<void> {
     const key = process.env.KEY;
     if (typeof key !== 'string' || key.length <= 16) {
         throw new Error('The key is invalid, or it is less than 16 bytes, which is too insecure.');
     }
 
     const pool = new Pool();
+    const queue = await amqplib.connect(process.env.RABBITMQ_URL);
 
-    AppState.set({pool, key});
+    AppState.set({pool, key, queue});
 }
 
 if (require.main === module)
