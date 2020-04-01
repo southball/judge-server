@@ -1,5 +1,7 @@
 import {IsNumber} from 'class-validator';
 import {Request, Response, Router} from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import {AppState} from '../app-state';
 import {authAdminMiddleware} from '../auth';
 import {Ok} from '../json';
@@ -11,6 +13,7 @@ export function adminRouter(): Router {
 
     router.get('/admin/submissions', authAdminMiddleware, bodySingleTransformerMiddleware(GetSubmissionsProps), getSubmissions);
     router.get('/admin/users', authAdminMiddleware, getUsers);
+    router.get('/admin/testlib', authAdminMiddleware, getTestlib);
 
     return router;
 }
@@ -47,4 +50,11 @@ async function getUsers(req: Request, res: Response): Promise<void> {
     const users = result.rows as Partial<User>[];
 
     res.json(Ok(users));
+}
+
+async function getTestlib(req: Request, res: Response): Promise<void> {
+    const testlib = fs.readFileSync(path.resolve(process.env.DATAFOLDER, 'testlib.h'));
+
+    res.type('application/octet-stream')
+        .end(testlib);
 }

@@ -86,7 +86,7 @@ async function getProblems(req: Request, res: Response): Promise<void> {
         res.json(Ok(
             problems
                 .filter((problem) => problem.is_public)
-                .map(toPublicProblem)
+                .map(toPublicProblem),
         ));
     }
 }
@@ -133,7 +133,7 @@ async function createProblem(req: Request, res: Response): Promise<void> {
                                        compile_memory_limit, checker_time_limit, checker_memory_limit)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                  RETURNING *`,
-            [is_public, type, slug, title, statement, time_limit, memory_limit, compile_time_limit, compile_memory_limit, checker_time_limit, checker_memory_limit]
+            [is_public, type, slug, title, statement, time_limit, memory_limit, compile_time_limit, compile_memory_limit, checker_time_limit, checker_memory_limit],
         );
 
         if (result.rowCount !== 1)
@@ -218,7 +218,8 @@ async function editProblem(req: Request, res: Response): Promise<void> {
                  checker_time_limit   = $10,
                  checker_memory_limit = $11,
                  checker              = $12,
-                 interactor           = $13
+                 interactor           = $13,
+                 last_update          = NOW()
              WHERE id = $14
              RETURNING *;
         `,
@@ -239,7 +240,7 @@ async function deleteProblem(req: Request, res: Response): Promise<void> {
             `DELETE
              FROM Problems
              WHERE slug = $1`,
-        [problem.slug]
+        [problem.slug],
     );
 
     if (result.rowCount === 1) {
@@ -393,9 +394,10 @@ async function updateTestcases(req: Request, res: Response): Promise<void> {
         });
 
         await pool.query(
-            `UPDATE Problems
-            SET testcases = $2
-            WHERE id = $1`,
+                `UPDATE Problems
+                 SET testcases = $2,
+                     last_update = NOW()
+                 WHERE id = $1`,
             [req.problem.id, testcases],
         );
 

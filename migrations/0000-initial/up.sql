@@ -14,7 +14,8 @@ CREATE TABLE Problems
     checker_memory_limit BIGINT           NOT NULL,
     checker              TEXT             NOT NULL DEFAULT '',
     interactor           TEXT             NOT NULL DEFAULT '',
-    testcases            TEXT[][]         NOT NULL DEFAULT '{}'
+    testcases            TEXT[][]         NOT NULL DEFAULT '{}',
+    last_update          TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE Users

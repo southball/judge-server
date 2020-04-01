@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 
 import * as fs from 'fs';
 import * as path from 'path';
+import axios from 'axios';
 import {Pool} from 'pg';
 import 'reflect-metadata';
 import {AppState} from './app-state';
@@ -13,6 +14,7 @@ const log = debug('judge-server:index');
 dotenv.config();
 
 async function main(): Promise<void> {
+    await preInit();
     await initAppState();
 
     await fs.promises.mkdir(
@@ -24,6 +26,16 @@ async function main(): Promise<void> {
     const port = parseInt(process.env.PORT, 10);
     log(`Server is listening on port ${port}.`);
     app.listen(port);
+}
+
+async function preInit(): Promise<void> {
+    const testlibUrl = "https://cdn.jsdelivr.net/gh/MikeMirzayanov/testlib@master/testlib.h";
+    const testlibPath = path.resolve(process.env.DATAFOLDER, 'testlib.h');
+
+    if (!fs.existsSync(testlibPath)) {
+        const response = await axios.get(testlibUrl);
+        fs.writeFileSync(testlibPath, response.data);
+    }
 }
 
 async function initAppState(): Promise<void> {
