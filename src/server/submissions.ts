@@ -46,7 +46,7 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
     // Create the RichSubmission object.
     if (submission.contest_id === null) {
         const result = await pool.query(
-                `SELECT U.username, P.slug AS problem_slug, C.slug AS contest_slug, CP.slug AS contest_problem_slug
+                `SELECT U.username, P.slug AS problem_slug, P.title AS problem_title, C.slug AS contest_slug, C.title AS contest_title, CP.slug AS contest_problem_slug
                  FROM Submissions S
                           JOIN Problems P on S.problem_id = P.id
                           JOIN Users U on S.user_id = U.id
@@ -62,7 +62,9 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
             ...req.submission,
             username: row.username,
             problem_slug: row.problem_slug,
+            problem_title: row.problem_title,
             contest_slug: row.contest_slug,
+            contest_title: row.contest_title,
             contest_problem_slug: row.contest_problem_slug,
         };
     }

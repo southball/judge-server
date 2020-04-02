@@ -77,7 +77,8 @@ async function fetchProblemBySlug(req: Request, res: Response, next: NextFunctio
 async function getProblems(req: Request, res: Response): Promise<void> {
     const {pool} = AppState.get();
     const result = await pool.query(`SELECT *
-                                     FROM Problems`);
+                                     FROM Problems
+                                     ORDER BY id ASC`);
     const problems = result.rows as Problem[];
 
     if (req.user?.permissions.includes(Permissions.ADMIN)) {
@@ -252,7 +253,7 @@ async function deleteProblem(req: Request, res: Response): Promise<void> {
 
 class SubmitProblemProps {
     @IsNotEmpty() language: string;
-    @IsNotEmpty() source_code: string;
+    @IsString() source_code: string;
 }
 
 async function submitProblem(req: Request, res: Response): Promise<void> {
@@ -329,6 +330,8 @@ async function updateTestcases(req: Request, res: Response): Promise<void> {
 
     if (req.is('application/zip') && Buffer.isBuffer(req.body)) {
         const folder = path.resolve(process.env.DATAFOLDER, req.problem.slug);
+        fs.mkdirSync(folder, {recursive: true});
+
         const body = req.body as Buffer;
         const streamify = (buffer: Buffer): stream.PassThrough => {
             const pipe = new stream.PassThrough();
@@ -393,7 +396,7 @@ async function updateTestcases(req: Request, res: Response): Promise<void> {
             fs.unlinkSync(path.resolve(folder, `${testname}.out`));
         });
 
-        await pool.query(
+        const result = await pool.query(
                 `UPDATE Problems
                  SET testcases = $2,
                      last_update = NOW()

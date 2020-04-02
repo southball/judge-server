@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import {Permissions} from '.';
+import {AppState} from '../app-state';
 import {User} from '../models';
 
 /**
@@ -74,23 +75,25 @@ export class JWTTokenPair {
         };
     }
 
-    private static generateAccessToken(username: string, key: string): string {
-        return jwt.sign({username, refresh: false}, key, {expiresIn: '20 minutes'});
+    private static generateAccessToken(username: string, permissions: string[], key: string): string {
+        return jwt.sign({username, permissions, refresh: false}, key, {expiresIn: '20 minutes'});
     }
 
-    private static generateRefreshToken(username: string, key: string): string {
-        return jwt.sign({username, refresh: true}, key, {expiresIn: '7 days'});
+    private static generateRefreshToken(username: string, permissions: string[], key: string): string {
+        return jwt.sign({username, permissions, refresh: true}, key, {expiresIn: '7 days'});
     }
 
-    public static forUser(username: string, key: string): JWTTokenPair {
+    public static forUser(username: string, permissions: string[], key: string): JWTTokenPair {
         return new JWTTokenPair(
-            JWTTokenPair.generateRefreshToken(username, key),
-            JWTTokenPair.generateAccessToken(username, key),
+            JWTTokenPair.generateRefreshToken(username, permissions, key),
+            JWTTokenPair.generateAccessToken(username, permissions,key),
         );
     }
 
     // Uses the refresh token to generate a new access token. Returns false if it fails to do so.
-    public refresh(key: string): boolean {
+    public async refresh(key: string): Promise<boolean> {
+        const {pool} = AppState.get();
+
         try {
             const {refresh, username} = jwt.verify(this.refreshToken, key) as JWTTokenPayload;
 
@@ -98,9 +101,20 @@ export class JWTTokenPair {
                 return false;
             if (typeof username !== 'string' || username.length === 0)
                 return false;
-            // TODO verify username is valid
 
-            this.accessToken = JWTTokenPair.generateAccessToken(username, key);
+            // TODO verify username is valid
+            const result = await pool.query(
+                `SELECT * FROM Users WHERE username=$1`,
+                [username],
+            );
+
+            if (result.rowCount === 0) {
+                return false;
+            }
+
+            const user = result.rows[0] as User;
+
+            this.accessToken = JWTTokenPair.generateAccessToken(username, user.permissions,key);
             return true;
         } catch (err) {
             console.error(err);

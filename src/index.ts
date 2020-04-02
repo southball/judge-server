@@ -1,10 +1,10 @@
 import * as amqplib from 'amqplib';
+import axios from 'axios';
 import * as debug from 'debug';
 import * as dotenv from 'dotenv';
 
 import * as fs from 'fs';
 import * as path from 'path';
-import axios from 'axios';
 import {Pool} from 'pg';
 import 'reflect-metadata';
 import {AppState} from './app-state';

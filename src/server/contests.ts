@@ -1,5 +1,5 @@
 import {Type} from 'class-transformer';
-import {IsBoolean, IsDate, IsNotEmpty, IsNumber, IsOptional, ValidateNested} from 'class-validator';
+import {IsBoolean, IsDate, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested} from 'class-validator';
 import {NextFunction, Request, Response, Router} from 'express';
 import {PoolClient} from 'pg';
 import {AppState} from '../app-state';
@@ -14,7 +14,7 @@ import {
     RichSubmission,
     Submission,
     toPublicContest,
-    toPublicContestProblemInfo,
+    toPublicContestProblemInfo, toPublicProblem,
     User,
 } from '../models';
 import {bodySingleTransformerMiddleware} from '../validation';
@@ -42,6 +42,8 @@ export function contestsRouter(): Router {
         authAdminMiddleware,
         deleteContest);
 
+    router.get('/contest/:contest_slug/problem/:contest_problem_slug',
+        getContestProblem);
     router.post('/contest/:contest_slug/problem/:contest_problem_slug/submit',
         authUserMiddleware,
         userContestRunningMiddleware,
@@ -134,20 +136,31 @@ async function fetchContestFromSlug(req: Request, res: Response, next: NextFunct
 async function fetchContestProblemFromSlug(req: Request, res: Response, next: NextFunction, contest_problem_slug: string): Promise<void> {
     const {pool} = AppState.get();
 
-    const result = await pool.query(
+    const contestProblemResult = await pool.query(
             `SELECT *
              FROM ContestProblems
              WHERE slug = $1`,
         [contest_problem_slug],
     );
 
-    if (result.rowCount === 0) {
+    if (contestProblemResult.rowCount === 0) {
         res.json(Err('Contest problem not found.'));
         return;
     }
 
-    const contestProblem = result.rows[0] as ContestProblem;
+    const contestProblem = contestProblemResult.rows[0] as ContestProblem;
     req.contestProblem = contestProblem;
+
+    const problemResult = await pool.query(
+            `SELECT *
+             FROM Problems
+             WHERE id = $1`,
+        [contestProblem.problem_id],
+    );
+
+    const problem = problemResult.rows[0] as Problem;
+    req.problem = problem;
+
     next();
 }
 
@@ -156,7 +169,8 @@ async function getContests(req: Request, res: Response): Promise<void> {
 
     try {
         const result = await pool.query(`SELECT *
-                                         FROM Contests`);
+                                         FROM Contests
+                                         ORDER BY start_time DESC`);
         const contests = result.rows as Contest[];
 
         if (userIsAdmin(req.user)) {
@@ -341,6 +355,14 @@ async function getContest(req: Request, res: Response): Promise<void> {
     }
 }
 
+async function getContestProblem(req: Request, res: Response): Promise<void> {
+    if (userIsAdmin) {
+        res.json(Ok(req.problem));
+    } else {
+        res.json(Ok(toPublicProblem(req.problem)));
+    }
+}
+
 class EditContestProps {
     @IsOptional() @IsBoolean() is_public: boolean = false;
     @IsOptional() @IsNotEmpty() slug: string;
@@ -448,7 +470,7 @@ async function deleteContest(req: Request, res: Response): Promise<void> {
 
 class SubmitToContestProps {
     @IsNotEmpty() language: string;
-    @IsNotEmpty() source_code: string;
+    @IsString() source_code: string;
 }
 
 async function submitToContest(req: Request, res: Response): Promise<void> {

@@ -1,5 +1,5 @@
 import {Transform} from 'class-transformer';
-import {IsEmail, IsNotEmpty, IsOptional, Length, Matches, MinLength} from 'class-validator';
+import {IsEmail, IsNotEmpty, IsOptional, IsString, Length, Matches, MinLength} from 'class-validator';
 import {Request, Response, Router} from 'express';
 import {AppState} from '../app-state';
 import {JWTTokenPair, SaltedHash} from '../auth';
@@ -88,11 +88,11 @@ async function register(req: Request, res: Response): Promise<void> {
 }
 
 class LoginProps {
-    @IsNotEmpty()
+    @IsString()
     @Transform((username) => username.toLowerCase())
     username: string;
-
-    @IsNotEmpty()
+    
+    @IsString()
     password: string;
 }
 
@@ -120,7 +120,7 @@ async function login(req: Request, res: Response): Promise<void> {
     }
 
     // Generate token
-    const jwt = JWTTokenPair.forUser(user.username, key);
+    const jwt = JWTTokenPair.forUser(user.username, user.permissions,key);
     res.json(Ok(jwt.toJSON()));
 }
 
@@ -136,7 +136,7 @@ async function refresh(req: Request, res: Response): Promise<void> {
     console.log(req.body);
 
     const jwt = new JWTTokenPair(refresh_token);
-    if (!jwt.refresh(key)) {
+    if (!await jwt.refresh(key)) {
         res.json(Err('Failed to refresh the token.'));
         return;
     }
