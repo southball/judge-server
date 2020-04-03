@@ -202,8 +202,8 @@ async function getContestRegistrants(req: Request, res: Response): Promise<void>
 }
 
 class CreateContestProblemProps {
-    @IsNotEmpty() slug: string;
-    @IsNumber() id: number;
+    @IsNotEmpty() contest_problem_slug: string;
+    @IsNumber() problem_id: number;
 }
 
 class CreateContestProps {
@@ -220,8 +220,8 @@ async function validateProblemSlugs(problems: CreateContestProblemProps[]): Prom
 
     // Check that the problem slugs are unique.
     {
-        const slugSet = new Set([...problems.map((problem) => problem.slug)]);
-        const idSet = new Set([...problems.map((problem) => problem.id)]);
+        const slugSet = new Set([...problems.map((problem) => problem.contest_problem_slug)]);
+        const idSet = new Set([...problems.map((problem) => problem.problem_id)]);
 
         if (slugSet.size !== problems.length || idSet.size !== problems.length) {
             throw Err('Problem slugs and/or IDs are not unique.');
@@ -234,12 +234,12 @@ async function validateProblemSlugs(problems: CreateContestProblemProps[]): Prom
                 `SELECT *
                  FROM Problems
                  WHERE id = ANY ($1)`,
-            [problems.map((slug) => slug.id)],
+            [problems.map((slug) => slug.problem_id)],
         );
 
         if (result.rowCount !== problems.length) {
             const existingSlugs: Set<number> = new Set(result.rows.map((problem: Problem) => problem.id));
-            const wrongSlugs = problems.filter((slug) => !existingSlugs.has(slug.id));
+            const wrongSlugs = problems.filter((slug) => !existingSlugs.has(slug.problem_id));
             throw Err('Invalid problem IDs.', wrongSlugs);
         }
     }
@@ -253,7 +253,7 @@ async function createContestProblems(client: PoolClient, contest: Contest, probl
                 `INSERT INTO ContestProblems (slug, contest_id, problem_id)
                  VALUES ($1, $2, $3)
                  RETURNING *`,
-            [problemSlug.slug, contest.id, problemSlug.id],
+            [problemSlug.contest_problem_slug, contest.id, problemSlug.problem_id],
         );
 
         if (result.rowCount !== 1)
@@ -329,7 +329,7 @@ async function getContest(req: Request, res: Response): Promise<void> {
 
     try {
         const result = await pool.query(
-                `SELECT CP.slug AS contest_problem_slug, P.*
+                `SELECT CP.slug AS contest_problem_slug, P.*, P.id AS problem_id, CP.id AS contest_problem_id
                  FROM ContestProblems CP
                           JOIN Problems P on CP.problem_id = P.id
                  WHERE contest_id = $1`,
@@ -436,10 +436,11 @@ async function editContest(req: Request, res: Response): Promise<void> {
             [contest.id],
         );
 
-        res.json(Ok({
-            ...contest,
-            problems: result.rows as ContestProblemInfo[],
-        } as Contest))
+        await getContest(req, res);
+        // res.json(Ok({
+        //     ...contest,
+        //     problems: result.rows as ContestProblemInfo[],
+        // } as Contest))
     } catch (err) {
         console.error(err);
         await client.query('ROLLBACK');

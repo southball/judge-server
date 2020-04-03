@@ -38,13 +38,15 @@ export interface Contest {
     problems?: ContestProblemInfo[];
 }
 
-export type ContestProblemInfo = Problem & { contest_problem_slug: string };
+export type ContestProblemInfo =
+    Problem
+    & { contest_problem_slug: string; contest_problem_id: number; problem_id: number };
 
 export type PublicContest = Pick<Contest, 'id' | 'slug' | 'title' | 'start_time' | 'end_time'> & {
     problems?: PublicContestProblemInfo[];
 };
 
-export type PublicContestProblemInfo = PublicProblem & { contest_problem_slug: string };
+export type PublicContestProblemInfo = PublicProblem & { contest_problem_slug: string; contest_problem_id: number };
 
 export const toPublicContest = ({id, slug, title, start_time, end_time}: Contest): PublicContest => ({
     id,
@@ -64,6 +66,7 @@ export const toPublicContestProblemInfo =
          time_limit,
          memory_limit,
          contest_problem_slug,
+         contest_problem_id,
      }: ContestProblemInfo): PublicContestProblemInfo => ({
         id,
         type,
@@ -73,6 +76,7 @@ export const toPublicContestProblemInfo =
         time_limit,
         memory_limit,
         contest_problem_slug,
+        contest_problem_id,
     });
 
 export interface User {
@@ -121,5 +125,17 @@ export type PublicSubmission =
     Pick<RichSubmission, 'id' | 'date' | 'language' | 'source_code' | 'verdict' | 'time' | 'memory' | 'username' | 'problem_slug' | 'problem_title' | 'contest_slug' | 'contest_title' | 'contest_problem_slug'>
 
 export const toPublicSubmission = ({id, date, language, source_code, verdict, time, memory, username, problem_slug, problem_title, contest_slug, contest_title, contest_problem_slug}: RichSubmission): Partial<PublicSubmission> => ({
-    id, date, language, source_code, verdict, time, memory, username, problem_slug, problem_title, contest_slug, contest_title, contest_problem_slug,
+    id,
+    date,
+    language,
+    source_code,
+    verdict,
+    time,
+    memory,
+    username,
+    problem_slug,
+    problem_title,
+    contest_slug,
+    contest_title,
+    contest_problem_slug,
 });

@@ -8,9 +8,9 @@ export const TRANSFORM_VALIDATION_OPTIONS: TransformValidationOptions = {
             target: false,
             value: false,
         },
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        forbidUnknownValues: true,
+        whitelist: false,
+        forbidNonWhitelisted: false,
+        forbidUnknownValues: false,
     },
     transformer: {
         excludeExtraneousValues: false,
