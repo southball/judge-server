@@ -4,11 +4,14 @@ import * as debug from 'debug';
 import * as dotenv from 'dotenv';
 
 import * as fs from 'fs';
+import * as http from 'http';
 import * as path from 'path';
 import {Pool} from 'pg';
 import 'reflect-metadata';
+import * as socketIO from 'socket.io';
 import {AppState} from './app-state';
 import createServer from './server';
+import {initSocketIO} from './websocket/websocket';
 
 const log = debug('judge-server:index');
 dotenv.config();
@@ -24,8 +27,14 @@ async function main(): Promise<void> {
 
     const app = createServer();
     const port = parseInt(process.env.PORT, 10);
+    const httpServer = new http.Server(app);
+    const io = socketIO(httpServer);
+
+    AppState.set({io});
+    await initSocketIO();
+
     log(`Server is listening on port ${port}.`);
-    app.listen(port);
+    httpServer.listen(port);
 }
 
 async function preInit(): Promise<void> {

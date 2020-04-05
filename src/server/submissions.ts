@@ -58,6 +58,9 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
 
         const row = result.rows[0];
 
+        const rawVerdict = JSON.parse(submission.verdict_json ?? '{}');
+        const testcases = rawVerdict?.testcases ?? null;
+
         req.richSubmission = {
             ...req.submission,
             username: row.username,
@@ -66,6 +69,7 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
             contest_slug: row.contest_slug,
             contest_title: row.contest_title,
             contest_problem_slug: row.contest_problem_slug,
+            testcases,
         };
     }
 
@@ -146,7 +150,7 @@ class UpdateSubmissionJudgeProps {
 }
 
 async function updateSubmissionJudge(req: Request, res: Response): Promise<void> {
-    const {pool} = AppState.get();
+    const {pool, io} = AppState.get();
     const body = req.body as UpdateSubmissionJudgeProps;
 
     try {
@@ -167,6 +171,16 @@ async function updateSubmissionJudge(req: Request, res: Response): Promise<void>
         );
 
         res.json(Ok());
+
+        try {
+            const progress = body.testcases.filter((testcase) => testcase.verdict !== "WJ").length;
+            const total = body.testcases.length;
+            const eventName = `submission.${req.submission.id}`;
+
+            io.emit(eventName, {progress, total});
+        } catch (err) {
+            console.error(err);
+        }
     } catch (err) {
         res.json(Err('Failed to update submission.'));
     }

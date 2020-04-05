@@ -97,6 +97,12 @@ export interface ContestProblem {
     problem_id: number;
 }
 
+export interface SubmissionTestcase {
+    verdict: string;
+    time: number;
+    memory: number;
+}
+
 export interface Submission {
     id: number;
     date: Date;
@@ -119,12 +125,13 @@ export type RichSubmission = Submission & {
     contest_slug: string;
     contest_title: string;
     contest_problem_slug: string;
+    testcases: SubmissionTestcase[] | null;
 };
 
 export type PublicSubmission =
-    Pick<RichSubmission, 'id' | 'date' | 'language' | 'source_code' | 'verdict' | 'time' | 'memory' | 'username' | 'problem_slug' | 'problem_title' | 'contest_slug' | 'contest_title' | 'contest_problem_slug'>
+    Pick<RichSubmission, 'id' | 'date' | 'language' | 'source_code' | 'verdict' | 'time' | 'memory' | 'username' | 'problem_slug' | 'problem_title' | 'contest_slug' | 'contest_title' | 'contest_problem_slug' | 'testcases'>
 
-export const toPublicSubmission = ({id, date, language, source_code, verdict, time, memory, username, problem_slug, problem_title, contest_slug, contest_title, contest_problem_slug}: RichSubmission): Partial<PublicSubmission> => ({
+export const toPublicSubmission = ({id, date, language, source_code, verdict, time, memory, username, problem_slug, problem_title, contest_slug, contest_title, contest_problem_slug, testcases}: RichSubmission): Partial<PublicSubmission> => ({
     id,
     date,
     language,
@@ -138,4 +145,5 @@ export const toPublicSubmission = ({id, date, language, source_code, verdict, ti
     contest_slug,
     contest_title,
     contest_problem_slug,
+    testcases,
 });

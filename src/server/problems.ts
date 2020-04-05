@@ -230,7 +230,8 @@ async function editProblem(req: Request, res: Response): Promise<void> {
     if (result.rowCount !== 1) {
         res.json(Err('Failed to edit problem.'));
     } else {
-        res.json(Ok(result.rows[0] as Problem));
+        // res.json(Ok(result.rows[0] as Problem));
+        await getProblem(req, res);
     }
 }
 
