@@ -28,3 +28,16 @@ export const bodySingleTransformerMiddleware = <T extends object>(targetClass: C
             res.status(400).json(Err('Invalid payload.', errors));
         }
     };
+
+export const querySingleTransformerMiddleware = <T extends object>(targetClass: ClassType<T>) =>
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log(req.query);
+        try {
+            if (Array.isArray(req.query))
+                throw new Error('Cannot use array as payload to this endpoint.');
+            req.queryBody = await transformAndValidate(targetClass, req.query, TRANSFORM_VALIDATION_OPTIONS);
+            next();
+        } catch (errors) {
+            res.status(400).json(Err('Invalid payload.', errors));
+        }
+    };

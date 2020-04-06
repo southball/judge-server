@@ -191,6 +191,8 @@ async function editProblem(req: Request, res: Response): Promise<void> {
         }
     }
 
+    const oldSlug = problem.slug;
+
     problem.type = body.type ?? problem.type;
     problem.is_public = body.is_public ?? problem.is_public;
     problem.slug = body.slug ?? problem.slug;
@@ -231,6 +233,12 @@ async function editProblem(req: Request, res: Response): Promise<void> {
         res.json(Err('Failed to edit problem.'));
     } else {
         // res.json(Ok(result.rows[0] as Problem));
+        if (oldSlug !== problem.slug) {
+            const oldFolder = path.resolve(process.env.DATAFOLDER, oldSlug);
+            const newFolder = path.resolve(process.env.DATAFOLDER, problem.slug);
+            await fs.promises.rename(oldFolder, newFolder);
+        }
+
         await getProblem(req, res);
     }
 }

@@ -1,22 +1,27 @@
-import {Type} from 'class-transformer';
-import {IsArray, IsNotEmpty, IsNumber, IsString} from 'class-validator';
+import {Transform, Type} from 'class-transformer';
+import {IsArray, IsNotEmpty, IsNumber, IsNumberString, IsOptional, IsString, Max, Min} from 'class-validator';
 import {NextFunction, Request, Response, Router} from 'express';
 import {AppState} from '../app-state';
 import {authAdminMiddleware, userIsAdmin} from '../auth';
 import {Err, Ok} from '../json';
-import {Contest, Problem, Submission, toPublicSubmission} from '../models';
-import {bodySingleTransformerMiddleware} from '../validation';
+import {Contest, Problem, RichSubmission, Submission, toPublicSubmission, toSlimSubmission} from '../models';
+import {bodySingleTransformerMiddleware, querySingleTransformerMiddleware} from '../validation';
 
 export function submissionsRouter(): Router {
     const router = Router();
 
     router.param('submission_id', fetchSubmission);
 
+    router.get('/submissions',
+        querySingleTransformerMiddleware(GetSubmissionsProps),
+        getSubmissions);
+
     router.get('/submission/:submission_id', getSubmission);
     router.put('/submission/:submission_id/judge',
         authAdminMiddleware,
         bodySingleTransformerMiddleware(UpdateSubmissionJudgeProps),
         updateSubmissionJudge);
+    router.post('/submission/:submission_id/rejudge', authAdminMiddleware, rejudgeSubmission);
 
     return router;
 }
@@ -44,9 +49,14 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
     req.submission = submission;
 
     // Create the RichSubmission object.
-    if (submission.contest_id === null) {
+    {
         const result = await pool.query(
-                `SELECT U.username, P.slug AS problem_slug, P.title AS problem_title, C.slug AS contest_slug, C.title AS contest_title, CP.slug AS contest_problem_slug
+                `SELECT U.username,
+                        P.slug  AS problem_slug,
+                        P.title AS problem_title,
+                        C.slug  AS contest_slug,
+                        C.title AS contest_title,
+                        CP.slug AS contest_problem_slug
                  FROM Submissions S
                           JOIN Problems P on S.problem_id = P.id
                           JOIN Users U on S.user_id = U.id
@@ -80,7 +90,7 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
         // If the submission is from a contest, the contest must be considered first.
         if (submission.contest_id !== null) {
             const result = await pool.query(
-                `SELECT *
+                    `SELECT *
                      FROM Contests
                      WHERE id = $1`,
                 [submission.contest_id],
@@ -89,13 +99,15 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
             const now = new Date();
 
             if (now > contest.end_time) {
-                if (contest.is_public && now > contest.end_time) {
+                if (contest.is_public) {
                     accessible = true;
                 }
 
                 const result = await pool.query(
-                    `SELECT * FROM ContestRegistrations WHERE
-                            contest_id = $1 AND user_id = $2`,
+                        `SELECT *
+                         FROM ContestRegistrations
+                         WHERE contest_id = $1
+                           AND user_id = $2`,
                     [submission.contest_id, submission.user_id],
                 );
 
@@ -106,7 +118,9 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
         } else {
             // Consider whether the user can already access the problem.
             const result = await pool.query(
-                `SELECT * FROM Problems WHERE id = $1`,
+                    `SELECT *
+                     FROM Problems
+                     WHERE id = $1`,
                 [submission.problem_id],
             );
 
@@ -124,6 +138,45 @@ async function fetchSubmission(req: Request, res: Response, next: NextFunction, 
     }
 
     next();
+}
+
+class GetSubmissionsProps {
+    @IsOptional() @IsNumber() @Transform(parseInt) start: number;
+    @IsNumber() @Min(1) @Max(100) @Transform(parseInt) count: number = 10;
+}
+
+async function getSubmissions(req: Request, res: Response): Promise<void> {
+    const body = req.queryBody as GetSubmissionsProps;
+    const {pool} = AppState.get();
+
+    console.log(body);
+
+    const result = await pool.query(
+            `SELECT S.*,
+                    U.username,
+                    P.slug  AS problem_slug,
+                    P.title AS problem_title,
+                    C.slug  AS contest_slug,
+                    C.title AS contest_title,
+                    CP.slug AS contest_problem_slug
+             FROM Submissions S
+                      JOIN Problems P on S.problem_id = P.id
+                      JOIN Users U on S.user_id = U.id
+                      LEFT JOIN Contests C on S.contest_id = C.id
+                      LEFT JOIN ContestProblems CP on S.contest_problem_id = CP.id
+             WHERE ($2 OR S.id <= $3)
+             ORDER BY S.id DESC
+             LIMIT $1`,
+        [
+            body.count,
+            typeof body.start !== 'number',
+            body.start,
+        ],
+    );
+
+    const submissions = (result.rows as RichSubmission[]).map(toSlimSubmission);
+
+    res.json(Ok(submissions));
 }
 
 async function getSubmission(req: Request, res: Response): Promise<void> {
@@ -173,16 +226,47 @@ async function updateSubmissionJudge(req: Request, res: Response): Promise<void>
         res.json(Ok());
 
         try {
-            const progress = body.testcases.filter((testcase) => testcase.verdict !== "WJ").length;
+            const progress = body.testcases.filter((testcase) => testcase.verdict !== 'WJ').length;
             const total = body.testcases.length;
             const eventName = `submission.${req.submission.id}`;
+            const {time, memory} = body;
 
-            io.emit(eventName, {progress, total});
+            io.emit(eventName, {progress, total, time, memory});
         } catch (err) {
             console.error(err);
         }
     } catch (err) {
         res.json(Err('Failed to update submission.'));
+    }
+}
+
+async function rejudgeSubmission(req: Request, res: Response): Promise<void> {
+    const {pool, queue} = AppState.get();
+
+    try {
+        // Clean problem verdict
+        await pool.query(
+                `UPDATE Submissions
+                 SET verdict_json='{}',
+                     verdict='WJ',
+                     time=NULL,
+                     memory=NULL
+                 WHERE id = $1`,
+            [req.submission.id],
+        );
+
+        // Push submission ID to queue.
+        const channel = await queue.createChannel();
+        await channel.assertQueue('JUDGE_QUEUE');
+        await channel.sendToQueue('JUDGE_QUEUE', Buffer.from(req.submission.id.toString()));
+
+        // Delegate error handling.
+        fetchSubmission(req, res, () => {
+            getSubmission(req, res);
+        }, req.params.submission_id);
+    } catch (err) {
+        console.error(err);
+        res.json(Err('Failed to rejudge submission.'));
     }
 }
 

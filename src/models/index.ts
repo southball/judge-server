@@ -128,14 +128,16 @@ export type RichSubmission = Submission & {
     testcases: SubmissionTestcase[] | null;
 };
 
-export type PublicSubmission =
-    Pick<RichSubmission, 'id' | 'date' | 'language' | 'source_code' | 'verdict' | 'time' | 'memory' | 'username' | 'problem_slug' | 'problem_title' | 'contest_slug' | 'contest_title' | 'contest_problem_slug' | 'testcases'>
+export type SlimSubmission =
+    Pick<RichSubmission, 'id' | 'date' | 'language' | 'verdict' | 'time' | 'memory' | 'username' | 'problem_slug' | 'problem_title' | 'contest_slug' | 'contest_title' | 'contest_problem_slug'>;
 
-export const toPublicSubmission = ({id, date, language, source_code, verdict, time, memory, username, problem_slug, problem_title, contest_slug, contest_title, contest_problem_slug, testcases}: RichSubmission): Partial<PublicSubmission> => ({
+export type PublicSubmission =
+    SlimSubmission & Pick<RichSubmission, 'source_code' | 'testcases'>;
+
+export const toSlimSubmission = ({id, date, language, verdict, time, memory, username, problem_slug, problem_title, contest_slug, contest_title, contest_problem_slug}: RichSubmission) => ({
     id,
     date,
     language,
-    source_code,
     verdict,
     time,
     memory,
@@ -145,5 +147,10 @@ export const toPublicSubmission = ({id, date, language, source_code, verdict, ti
     contest_slug,
     contest_title,
     contest_problem_slug,
-    testcases,
+});
+
+export const toPublicSubmission = (richSubmission: RichSubmission): Partial<PublicSubmission> => ({
+    ...toSlimSubmission(richSubmission),
+    source_code: richSubmission.source_code,
+    testcases: richSubmission.testcases,
 });
