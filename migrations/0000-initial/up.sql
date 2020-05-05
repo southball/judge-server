@@ -65,6 +65,7 @@ CREATE TABLE Submissions
     verdict            TEXT             NOT NULL,
     time               DOUBLE PRECISION NULL,
     memory             BIGINT           NULL,
+    compile_message    TEXT             NULL,
     verdict_json       TEXT             NULL
 );
 

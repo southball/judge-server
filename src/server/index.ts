@@ -3,7 +3,7 @@ import * as cors from 'cors';
 import * as express from 'express';
 import {Express} from 'express';
 import {userMiddleware} from '../auth';
-import {resetDatabaseWithDummyData} from '../data.local';
+import {resetDatabaseWithDummyData} from '../data';
 import {Err} from '../json';
 import {adminRouter} from './admin';
 import authRouter from './auth';

@@ -1,4 +1,4 @@
-import {Type} from 'class-transformer';
+import {Type, Transform} from 'class-transformer';
 import {IsBoolean, IsDate, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested} from 'class-validator';
 import {NextFunction, Request, Response, Router} from 'express';
 import {PoolClient} from 'pg';
@@ -209,10 +209,10 @@ class CreateContestProblemProps {
 class CreateContestProps {
     @IsBoolean() is_public: boolean = false;
     @IsNotEmpty() slug: string;
-    @IsNotEmpty() title: string;
-    @ValidateNested({each: true}) @Type(() => CreateContestProblemProps) problems: CreateContestProblemProps[];
-    @IsDate() @Type(() => Date) start_time: Date;
-    @IsDate() @Type(() => Date) end_time: Date;
+    @IsString() title: string = '';
+    @ValidateNested({each: true}) @Type(() => CreateContestProblemProps) problems: CreateContestProblemProps[] = [];
+    @IsDate() @Type(() => Date) start_time: Date = new Date(0);
+    @IsDate() @Type(() => Date) end_time: Date = new Date(0);
 }
 
 async function validateProblemSlugs(problems: CreateContestProblemProps[]): Promise<void> {
@@ -366,7 +366,7 @@ async function getContestProblem(req: Request, res: Response): Promise<void> {
 class EditContestProps {
     @IsOptional() @IsBoolean() is_public: boolean = false;
     @IsOptional() @IsNotEmpty() slug: string;
-    @IsOptional() @IsNotEmpty() title: string;
+    @IsOptional() @IsString() title: string;
     @IsOptional() @ValidateNested({each: true}) @Type(() => CreateContestProblemProps) problems: CreateContestProblemProps[];
     @IsOptional() @IsDate() @Type(() => Date) start_time: Date;
     @IsOptional() @IsDate() @Type(() => Date) end_time: Date;

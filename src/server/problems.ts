@@ -96,8 +96,8 @@ class CreateProblemProps {
     @IsNotEmpty() type: string = ProblemType.STANDARD;
     @IsBoolean() is_public: boolean = false;
     @IsNotEmpty() @Matches(/^[A-Za-z0-9_-]+$/i) slug: string;
-    @IsNotEmpty() title: string;
-    @IsNotEmpty() statement: string;
+    @IsString() title: string = '';
+    @IsString() statement: string = '';
     @IsNumber() time_limit: number = 1.0;
     @IsNumberString() memory_limit: string = '256000';
     @IsNumber() compile_time_limit: number = 15.0;
@@ -159,8 +159,8 @@ class EditProblemProps {
     @IsOptional() @IsNotEmpty() type: string = ProblemType.STANDARD;
     @IsOptional() @IsBoolean() is_public: boolean = false;
     @IsOptional() @IsNotEmpty() @Matches(/^[A-Za-z0-9_-]+$/i) slug: string;
-    @IsOptional() @IsNotEmpty() title: string;
-    @IsOptional() @IsNotEmpty() statement: string;
+    @IsOptional() @IsString() title: string;
+    @IsOptional() @IsString() statement: string;
     @IsOptional() @IsNumber() time_limit: number;
     @IsOptional() @IsNumberString() memory_limit: string;
     @IsOptional() @IsNumber() compile_time_limit: number;
@@ -235,8 +235,10 @@ async function editProblem(req: Request, res: Response): Promise<void> {
         // res.json(Ok(result.rows[0] as Problem));
         if (oldSlug !== problem.slug) {
             const oldFolder = path.resolve(process.env.DATAFOLDER, oldSlug);
+            if (fs.existsSync(oldFolder)) {
             const newFolder = path.resolve(process.env.DATAFOLDER, problem.slug);
             await fs.promises.rename(oldFolder, newFolder);
+            }
         }
 
         await getProblem(req, res);

@@ -199,6 +199,7 @@ class UpdateSubmissionJudgeProps {
     @IsNotEmpty() verdict: string;
     @IsNumber() time: number;
     @IsNumber() memory: number;
+    @IsString() compile_message: string;
     @IsArray() @Type(() => JudgeTestcaseOutput) testcases: JudgeTestcaseOutput[];
 }
 
@@ -212,13 +213,15 @@ async function updateSubmissionJudge(req: Request, res: Response): Promise<void>
                  SET verdict=$1,
                      time=$2,
                      memory=$3,
-                     verdict_json=$4
-                 WHERE id = $5`,
+                     verdict_json=$4,
+                     compile_message=$5
+                 WHERE id = $6`,
             [
                 body.verdict,
                 body.time,
                 body.memory,
                 JSON.stringify(body),
+                body.compile_message,
                 req.submission.id,
             ],
         );
