@@ -10,6 +10,7 @@ import authRouter from './auth';
 import contestsRouter from './contests';
 import problemsRouter from './problems';
 import submissionsRouter from './submissions';
+import usersRouter from './users';
 
 export default function createServer(): Express {
     const app = express();
@@ -23,6 +24,7 @@ export default function createServer(): Express {
     app.use(problemsRouter());
     app.use(submissionsRouter());
     app.use(adminRouter());
+    app.use(usersRouter());
 
     // TODO remove from project
     if (process.env.NODE_ENV === 'development') {

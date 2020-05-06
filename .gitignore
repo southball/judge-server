@@ -7,3 +7,4 @@
 *.log
 
 /src/data.local.ts
+/data

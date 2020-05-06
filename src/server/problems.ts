@@ -1,17 +1,17 @@
 import * as archiver from 'archiver';
 import * as bodyParser from 'body-parser';
-import {IsBoolean, IsNotEmpty, IsNumber, IsNumberString, IsOptional, IsString, Matches} from 'class-validator';
-import {NextFunction, Request, Response, Router} from 'express';
+import { IsBoolean, IsNotEmpty, IsNumber, IsNumberString, IsOptional, IsString, Matches } from 'class-validator';
+import { NextFunction, Request, Response, Router } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as stream from 'stream';
 import * as unzipper from 'unzipper';
 import * as yaml from 'yaml';
-import {AppState} from '../app-state';
-import {authAdminMiddleware, authUserMiddleware, Permissions, userIsAdmin} from '../auth';
-import {Err, Ok} from '../json';
-import {Problem, Submission, toPublicProblem} from '../models';
-import {bodySingleTransformerMiddleware} from '../validation';
+import { AppState } from '../app-state';
+import { authAdminMiddleware, authUserMiddleware, Permissions, userIsAdmin } from '../auth';
+import { Err, Ok } from '../json';
+import { Problem, Submission, toPublicProblem } from '../models';
+import { bodySingleTransformerMiddleware } from '../validation';
 
 export class ProblemType {
     public static STANDARD = 'standard';
@@ -35,7 +35,7 @@ export function problemsRouter(): Router {
     router.get('/problem/:problem_slug/testcases', authAdminMiddleware, getTestcases);
     router.put('/problem/:problem_slug/testcases',
         authAdminMiddleware,
-        bodyParser.raw({limit: process.env.UPLOADLIMIT, type: 'application/zip'}),
+        bodyParser.raw({ limit: process.env.UPLOADLIMIT, type: 'application/zip' }),
         updateTestcases);
 
     router.get('/problem/:problem_slug/checker', authAdminMiddleware, getChecker);
@@ -49,10 +49,10 @@ export function problemsRouter(): Router {
  * Set `req.problem` to the problem with `slug` equal to `problem_slug` if found, and errs otherwise.
  */
 async function fetchProblemBySlug(req: Request, res: Response, next: NextFunction, problem_slug: string): Promise<void> {
-    const {pool} = AppState.get();
+    const { pool } = AppState.get();
 
     const result = await pool.query(
-            `SELECT *
+        `SELECT *
              FROM Problems
              WHERE slug = $1`,
         [problem_slug],
@@ -75,7 +75,7 @@ async function fetchProblemBySlug(req: Request, res: Response, next: NextFunctio
 }
 
 async function getProblems(req: Request, res: Response): Promise<void> {
-    const {pool} = AppState.get();
+    const { pool } = AppState.get();
     const result = await pool.query(`SELECT *
                                      FROM Problems
                                      ORDER BY id ASC`);
@@ -109,13 +109,13 @@ class CreateProblemProps {
 }
 
 async function createProblem(req: Request, res: Response): Promise<void> {
-    const {pool} = AppState.get();
-    const {is_public, type, slug, title, statement, time_limit, memory_limit, compile_time_limit, compile_memory_limit, checker_time_limit, checker_memory_limit} = req.body as CreateProblemProps;
+    const { pool } = AppState.get();
+    const { is_public, type, slug, title, statement, time_limit, memory_limit, compile_time_limit, compile_memory_limit, checker_time_limit, checker_memory_limit } = req.body as CreateProblemProps;
 
     // Check that problem with the same slug does not exist.
     {
         const result = await pool.query(
-                `SELECT *
+            `SELECT *
                  FROM Problems
                  WHERE slug = $1`,
             [slug],
@@ -129,7 +129,7 @@ async function createProblem(req: Request, res: Response): Promise<void> {
 
     try {
         const result = await pool.query(
-                `INSERT INTO Problems (is_public, type, slug, title, statement, time_limit, memory_limit,
+            `INSERT INTO Problems (is_public, type, slug, title, statement, time_limit, memory_limit,
                                        compile_time_limit,
                                        compile_memory_limit, checker_time_limit, checker_memory_limit)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -172,14 +172,14 @@ class EditProblemProps {
 }
 
 async function editProblem(req: Request, res: Response): Promise<void> {
-    const {pool} = AppState.get();
+    const { pool } = AppState.get();
     const problem = req.problem as Problem;
     const body = req.body as EditProblemProps;
 
     if (typeof body.slug !== 'undefined' && body.slug !== problem.slug) {
         // check whether the slug is already used
         const result = await pool.query(
-                `SELECT *
+            `SELECT *
                  FROM Problems
                  WHERE slug = $1`,
             [body.slug],
@@ -208,7 +208,7 @@ async function editProblem(req: Request, res: Response): Promise<void> {
     problem.interactor = body.interactor ?? problem.interactor;
 
     const result = await pool.query(
-            `UPDATE Problems
+        `UPDATE Problems
              SET type                 = $1,
                  is_public            = $2,
                  slug                 = $3,
@@ -236,8 +236,8 @@ async function editProblem(req: Request, res: Response): Promise<void> {
         if (oldSlug !== problem.slug) {
             const oldFolder = path.resolve(process.env.DATAFOLDER, oldSlug);
             if (fs.existsSync(oldFolder)) {
-            const newFolder = path.resolve(process.env.DATAFOLDER, problem.slug);
-            await fs.promises.rename(oldFolder, newFolder);
+                const newFolder = path.resolve(process.env.DATAFOLDER, problem.slug);
+                await fs.promises.rename(oldFolder, newFolder);
             }
         }
 
@@ -246,10 +246,10 @@ async function editProblem(req: Request, res: Response): Promise<void> {
 }
 
 async function deleteProblem(req: Request, res: Response): Promise<void> {
-    const {pool} = AppState.get();
+    const { pool } = AppState.get();
     const problem = req.problem;
     const result = await pool.query(
-            `DELETE
+        `DELETE
              FROM Problems
              WHERE slug = $1`,
         [problem.slug],
@@ -268,8 +268,8 @@ class SubmitProblemProps {
 }
 
 async function submitProblem(req: Request, res: Response): Promise<void> {
-    const {pool, queue} = AppState.get();
-    const {language, source_code} = req.body as SubmitProblemProps;
+    const { pool, queue } = AppState.get();
+    const { language, source_code } = req.body as SubmitProblemProps;
 
     const submission: Partial<Submission> = {
         user_id: req.user.id,
@@ -280,7 +280,7 @@ async function submitProblem(req: Request, res: Response): Promise<void> {
     };
 
     const result = await pool.query(
-            `INSERT INTO Submissions (user_id, problem_id, language, source_code, verdict)
+        `INSERT INTO Submissions (user_id, problem_id, language, source_code, verdict)
              VALUES ($1, $2, $3, $4, $5)
              RETURNING id`,
         [submission.user_id, submission.problem_id, submission.language, submission.source_code, submission.verdict],
@@ -291,7 +291,7 @@ async function submitProblem(req: Request, res: Response): Promise<void> {
         return;
     }
 
-    const {id} = result.rows[0];
+    const { id } = result.rows[0];
 
     try {
         // Push submission ID to queue.
@@ -304,12 +304,12 @@ async function submitProblem(req: Request, res: Response): Promise<void> {
         return;
     }
 
-    res.json(Ok({id}));
+    res.json(Ok({ id }));
 }
 
 async function getTestcases(req: Request, res: Response): Promise<void> {
     const folder = path.resolve(process.env.DATAFOLDER, req.problem.slug);
-    await fs.promises.mkdir(folder, {recursive: true});
+    await fs.promises.mkdir(folder, { recursive: true });
 
     try {
         const archive = archiver('zip');
@@ -337,11 +337,11 @@ async function getTestcases(req: Request, res: Response): Promise<void> {
 }
 
 async function updateTestcases(req: Request, res: Response): Promise<void> {
-    const {pool} = AppState.get();
+    const { pool } = AppState.get();
 
     if (req.is('application/zip') && Buffer.isBuffer(req.body)) {
         const folder = path.resolve(process.env.DATAFOLDER, req.problem.slug);
-        fs.mkdirSync(folder, {recursive: true});
+        fs.mkdirSync(folder, { recursive: true });
 
         const body = req.body as Buffer;
         const streamify = (buffer: Buffer): stream.PassThrough => {
@@ -353,7 +353,7 @@ async function updateTestcases(req: Request, res: Response): Promise<void> {
         const inRule = [/^in\/(.*)\.in$/, /^in\/(.*)\.txt$/, /^(.*)\.in$/];
         const outRule = [/^out\/(.*)\.out$/, /^out\/(.*)\.txt$/, /^(.*)\.out$/];
 
-        const iterator = streamify(body).pipe(unzipper.Parse({forceStream: true}))
+        const iterator = streamify(body).pipe(unzipper.Parse({ forceStream: true }))
         const inFileSet = new Set<string>();
         const outFileSet = new Set<string>();
 
@@ -408,7 +408,7 @@ async function updateTestcases(req: Request, res: Response): Promise<void> {
         });
 
         const result = await pool.query(
-                `UPDATE Problems
+            `UPDATE Problems
                  SET testcases = $2,
                      last_update = NOW()
                  WHERE id = $1`,
@@ -441,7 +441,7 @@ async function getInteractor(req: Request, res: Response): Promise<void> {
 }
 
 async function getMetadata(req: Request, res: Response): Promise<void> {
-    const {title, time_limit, memory_limit, compile_time_limit, compile_memory_limit, checker_time_limit, checker_memory_limit, testcases} = req.problem;
+    const { title, time_limit, memory_limit, compile_time_limit, compile_memory_limit, checker_time_limit, checker_memory_limit, testcases } = req.problem;
 
     const metadataYaml = yaml.stringify({
         problem_name: title,
@@ -451,7 +451,7 @@ async function getMetadata(req: Request, res: Response): Promise<void> {
         compile_memory_limit: +compile_memory_limit,
         checker_time_limit,
         checker_memory_limit: +checker_memory_limit,
-        testcases: testcases.map(([input, output]) => ({input, output})),
+        testcases: testcases.map(([input, output]) => ({ input, output })),
     });
 
     res.type('application/x-yaml')

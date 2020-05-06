@@ -10,6 +10,7 @@ declare module 'express-serve-static-core' {
         submission?: Submission;
         richSubmission?: RichSubmission;
         user?: User;
+        queryUser?: User;
         queryBody?: any;
     }
 }
