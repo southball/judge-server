@@ -116,6 +116,7 @@ export interface Submission {
     time: number | null;
     memory: number | null;
     verdict_json: string | null;
+    compile_message: string | null;
 }
 
 export type RichSubmission = Submission & {

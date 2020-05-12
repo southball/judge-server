@@ -21,6 +21,10 @@ export function submissionsRouter(): Router {
         authAdminMiddleware,
         bodySingleTransformerMiddleware(UpdateSubmissionJudgeProps),
         updateSubmissionJudge);
+    router.put('/submission/:submission_id/judge/progress',
+        authAdminMiddleware,
+        bodySingleTransformerMiddleware(UpdateSubmissionProgressProps),
+        updateSubmissionProgress);
     router.post('/submission/:submission_id/rejudge', authAdminMiddleware, rejudgeSubmission);
 
     return router;
@@ -243,6 +247,26 @@ async function updateSubmissionJudge(req: Request, res: Response): Promise<void>
     }
 }
 
+class UpdateSubmissionProgressProps {
+    @IsNumber() progress: number;
+    @IsNumber() total: number;
+}
+
+async function updateSubmissionProgress(req: Request, res: Response): Promise<void> {
+    const {io} = AppState.get();
+    const body = req.body as UpdateSubmissionProgressProps;
+
+    const eventName = `submission.${req.submission.id}`;
+    io.emit(eventName, {
+        progress: body.progress,
+        total: body.total,
+        time: 0.0,
+        memory: 0.0,
+    });
+
+    res.json(Ok());
+}
+
 async function rejudgeSubmission(req: Request, res: Response): Promise<void> {
     const {pool, queue} = AppState.get();
 
@@ -253,7 +277,8 @@ async function rejudgeSubmission(req: Request, res: Response): Promise<void> {
                  SET verdict_json='{}',
                      verdict='WJ',
                      time=NULL,
-                     memory=NULL
+                     memory=NULL,
+                     compile_message=NULL
                  WHERE id = $1`,
             [req.submission.id],
         );
