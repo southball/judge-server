@@ -5836,9 +5836,9 @@ supports-color@^7.1.0:
     has-flag "^4.0.0"
 
 systeminformation@^4.23.3:
-  version "4.26.4"
-  resolved "https://registry.yarnpkg.com/systeminformation/-/systeminformation-4.26.4.tgz#ec855d64f3e28622788a96c7dcabb6b051def50a"
-  integrity sha512-4+AYe0SfjdQPHEFL0nAyFMWyBUe8c5DZdSHApeJrdAvem5yoE/eS7/dGChnKLAkr+AKAoKcnqucPv302jy2+aA==
+  version "4.34.4"
+  resolved "https://registry.yarnpkg.com/systeminformation/-/systeminformation-4.34.4.tgz#ca8020c4c22ca5a3b085388ae6dceec5b457f5f8"
+  integrity sha512-iSlJTfRH451+rn+A5Y+zvkhX/J7r/TlOaL97lU8V6uC1QJdqbl74ZvFnBhrc0y7EvICQBEf7/7WuuS6ngMwGuQ==
 
 table@^5.2.3:
   version "5.4.6"
